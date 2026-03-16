@@ -7,5 +7,5 @@ RUN mkdir -p /app/static && wget -q https://cdn.tailwindcss.com/ -O /app/static/
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
-EXPOSE 5000
+EXPOSE 55234
 CMD ["python", "app.py"]
