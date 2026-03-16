@@ -1,4 +1,4 @@
-## Web UI will be available on port 5000 once deployed ##
+## Web UI will be available on port 55234 once deployed ##
 
 services:
   ntp-dashboard:
