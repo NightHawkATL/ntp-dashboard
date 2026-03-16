@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NTP Dashboard - Globe Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = { darkMode: 'class', }</script>
+    <style>
+        /* Pulse animation for locked satellites */
+        @keyframes ping-slow {
+            0% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(2.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 0; }
+        }
+        .ping-slow { animation: ping-slow 2s cubic-bezier(0, 0, 0.2, 1) infinite; transform-origin: center; }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-gray-100 transition-colors duration-200 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        
+        <!-- Header -->
+        <div class="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
+            <h1 class="text-3xl font-bold flex items-center gap-3">
+                <svg class="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                GPS NTP Dashboard
+            </h1>
+            <div class="flex gap-4">
+                <button id="themeToggle" class="px-4 py-2 font-medium rounded-lg bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 transition">
+                    Toggle Light/Dark
+                </button>
+                <button id="settingsToggle" class="px-4 py-2 font-medium rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition shadow-lg shadow-blue-500/30">
+                    Connection Setup
+                </button>
+            </div>
+        </div>
+
+        <!-- Metric Cards (Updates 2s) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6 border border-gray-200 dark:border-gray-700">
+                <h2 class="text-xl font-semibold mb-2 text-gray-700 dark:text-gray-300">System Time Status</h2>
+                <div class="text-xl font-mono text-green-500 font-bold" id="sysOffset">Loading...</div>
+                <div class="mt-2 text-sm text-gray-500 dark:text-gray-400">Difference between OS clock and synced GPS Time. (Updates 2s)</div>
+            </div>
+            
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6 border border-gray-200 dark:border-gray-700">
+                <h2 class="text-xl font-semibold mb-2 text-gray-700 dark:text-gray-300">Connection Mode</h2>
+                <div class="text-lg font-medium text-blue-600 dark:text-blue-400" id="connMode">Local Exec (on Pi)</div>
+                <div class="text-sm text-gray-500 dark:text-gray-400 mt-1 font-mono" id="connTarget">localhost</div>
+            </div>
+        </div>
+
+        <!-- Sources Table (Updates 2s) -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow overflow-hidden mb-6 border border-gray-200 dark:border-gray-700">
+            <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                <h2 class="text-lg font-semibold text-gray-700 dark:text-gray-300">NTP Sources (chronyc sources)</h2>
+                <span class="text-xs text-gray-500 font-mono">LIVE (2s)</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-50 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400 text-sm">
+                            <th class="p-4 font-medium">State</th>
+                            <th class="p-4 font-medium">Source</th>
+                            <th class="p-4 font-medium">Stratum</th>
+                            <th class="p-4 font-medium">Poll</th>
+                            <th class="p-4 font-medium">Reach</th>
+                            <th class="p-4 font-medium">LastRx</th>
+                            <th class="p-4 font-medium">Last Sample (Offset)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ntpTableBody" class="divide-y divide-gray-200 dark:divide-gray-700 font-mono text-sm"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Satellite Globe & List (Updates 30s) -->
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow overflow-hidden border border-gray-200 dark:border-gray-700 mb-8">
+            <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/80">
+                <h2 class="text-lg font-semibold text-gray-700 dark:text-gray-300">Satellite Constellation map</h2>
+                <div class="flex items-center gap-4">
+                    <div class="text-xs text-gray-500 font-mono flex items-center gap-2">
+                        <span>NEXT SWEEP:</span>
+                        <div class="w-16 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                            <div id="sweepProgressBar" class="h-full bg-blue-500 transition-all duration-1000 ease-linear" style="width: 100%"></div>
+                        </div>
+                    </div>
+                    <span class="px-3 py-1 text-sm rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 font-bold border border-blue-200 dark:border-blue-800" id="satCount">0 Locked</span>
+                </div>
+            </div>
+            
+            <div class="flex flex-col lg:flex-row">
+                <!-- 3D-ish Globe Map -->
+                <div class="p-6 flex justify-center items-center bg-[#0a0f1a] relative border-b lg:border-b-0 lg:border-r border-gray-200 dark:border-gray-700 lg:w-1/3">
+                    <div class="relative w-64 h-64">
+                        <svg viewBox="0 0 200 200" class="w-full h-full rounded-full shadow-[0_0_30px_rgba(59,130,246,0.2)]">
+                            <defs>
+                                <!-- Pseudo 3D Globe styling -->
+                                <radialGradient id="globeGrad" cx="35%" cy="35%" r="65%">
+                                    <stop offset="0%" stop-color="#1e3a8a" />
+                                    <stop offset="70%" stop-color="#0f172a" />
+                                    <stop offset="100%" stop-color="#020617" />
+                                </radialGradient>
+                                <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+                                    <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
+                                    <feMerge>
+                                        <feMergeNode in="coloredBlur"/>
+                                        <feMergeNode in="SourceGraphic"/>
+                                    </feMerge>
+                                </filter>
+                            </defs>
+                            
+                            <!-- Base Planet -->
+                            <circle cx="100" cy="100" r="100" fill="url(#globeGrad)" />
+                            
+                            <!-- Longitude / Latitude Grid to simulate a sphere -->
+                            <ellipse cx="100" cy="100" rx="100" ry="35" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="0.5" />
+                            <ellipse cx="100" cy="100" rx="100" ry="70" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="0.5" />
+                            <ellipse cx="100" cy="100" rx="35" ry="100" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="0.5" />
+                            <ellipse cx="100" cy="100" rx="70" ry="100" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="0.5" />
+                            <circle cx="100" cy="100" r="99" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1" />
+                            <line x1="100" y1="0" x2="100" y2="200" stroke="rgba(255,255,255,0.15)" stroke-width="0.5"/>
+                            <line x1="0" y1="100" x2="200" y2="100" stroke="rgba(255,255,255,0.15)" stroke-width="0.5"/>
+
+                            <!-- Dynamic Satellites injected here -->
+                            <g id="satellitesLayer"></g>
+                        </svg>
+                        
+                        <!-- Compass Markers -->
+                        <div class="absolute -top-4 left-1/2 -translate-x-1/2 text-xs font-bold text-gray-400">N</div>
+                        <div class="absolute -bottom-4 left-1/2 -translate-x-1/2 text-xs font-bold text-gray-400">S</div>
+                        <div class="absolute top-1/2 -right-4 -translate-y-1/2 text-xs font-bold text-gray-400">E</div>
+                        <div class="absolute top-1/2 -left-4 -translate-y-1/2 text-xs font-bold text-gray-400">W</div>
+                    </div>
+                </div>
+
+                <!-- Satellite SNR List -->
+                <div class="flex-1 overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400 text-sm">
+                                <th class="p-4 font-medium">PRN ID</th>
+                                <th class="p-4 font-medium">Elevation</th>
+                                <th class="p-4 font-medium">Azimuth</th>
+                                <th class="p-4 font-medium">Signal (SNR)</th>
+                                <th class="p-4 font-medium">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="satTableBody" class="divide-y divide-gray-200 dark:divide-gray-700 text-sm font-mono"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal (Hidden by default) -->
+    <div id="settingsModal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-50 px-4 backdrop-blur-sm transition-opacity">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md p-6 border border-gray-200 dark:border-gray-700">
+            <h2 class="text-2xl font-bold mb-4">Configuration</h2>
+            <form id="configForm">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-1 text-gray-600 dark:text-gray-300">Target Mode</label>
+                    <select id="mode" class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="local">Local (Web App runs on the NTP Server)</option>
+                        <option value="remote">Remote (Web App SSHs to the NTP Server)</option>
+                    </select>
+                </div>
+                <div id="remoteFields" class="hidden space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1 text-gray-600 dark:text-gray-300">NTP Server IP</label>
+                        <input type="text" id="host" class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500" placeholder="192.168.1.10">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1 text-gray-600 dark:text-gray-300">SSH Username</label>
+                        <input type="text" id="user" class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-500" placeholder="ubuntu">
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" id="closeSettings" class="px-4 py-2 rounded-lg font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition">Cancel</button>
+                    <button type="submit" class="px-4 py-2 rounded-lg font-medium bg-blue-500 text-white hover:bg-blue-600 transition shadow-lg shadow-blue-500/30">Save & Apply</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // --- Dark/Light Mode ---
+        const html = document.documentElement;
+        html.classList.add('dark'); // Default to dark for this mockup
+        document.getElementById('themeToggle').addEventListener('click', () => html.classList.toggle('dark'));
+
+        // --- Settings Modal ---
+        const settingsModal = document.getElementById('settingsModal');
+        const modeSelect = document.getElementById('mode');
+        const remoteFields = document.getElementById('remoteFields');
+
+        document.getElementById('settingsToggle').addEventListener('click', () => settingsModal.classList.remove('hidden'));
+        document.getElementById('closeSettings').addEventListener('click', () => settingsModal.classList.add('hidden'));
+
+        modeSelect.addEventListener('change', (e) => {
+            e.target.value === 'remote' ? remoteFields.classList.remove('hidden') : remoteFields.classList.add('hidden');
+        });
+
+        document.getElementById('configForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const mode = document.getElementById('mode').value;
+            const host = document.getElementById('host').value || '192.168.1.10';
+            document.getElementById('connMode').innerText = mode === 'local' ? 'Local Exec (on Pi)' : 'Remote Execution (via SSH)';
+            document.getElementById('connTarget').innerText = mode === 'remote' ? `ubuntu@${host}` : 'localhost';
+            settingsModal.classList.add('hidden');
+        });
+
+        // --- Mock Data ---
+        const baseSources =[
+            { state: '#*', name: 'PPS', stratum: '0', poll: '4', reach: '377', lastrx: '13', last_sample: '+14ns[ +28ns] +/- 100ns' },
+            { state: '#-', name: 'GPS', stratum: '0', poll: '4', reach: '377', lastrx: '12', last_sample: '-120us[-150us] +/- 500us' },
+            { state: '^-', name: 'time.cloudflare.com', stratum: '3', poll: '6', reach: '377', lastrx: '45', last_sample: '-1.2ms[ -1.4ms] +/-  15ms' }
+        ];
+
+        // --- Loop 1: Fast NTP Update (every 2 seconds) ---
+        function simulateNTPUpdate() {
+            const jitter = (Math.random() - 0.5) * 0.00000500;
+            const simulatedOffset = (0.00001500 + jitter).toFixed(8);
+            document.getElementById('sysOffset').innerText = `${simulatedOffset} seconds fast of NTP time`;
+
+            document.getElementById('ntpTableBody').innerHTML = baseSources.map(src => {
+                const isPPS = src.name.includes('PPS');
+                const rowClass = isPPS ? 'bg-blue-50/10 dark:bg-blue-900/10' : '';
+                const nameClass = isPPS ? 'text-blue-600 dark:text-blue-400 font-bold' : '';
+                return `
+                <tr class="${rowClass} hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                    <td class="p-4 font-bold ${src.state.includes('*') ? 'text-green-500' : ''}">${src.state}</td>
+                    <td class="p-4 ${nameClass}">${src.name}</td>
+                    <td class="p-4">${src.stratum}</td>
+                    <td class="p-4">${src.poll}</td>
+                    <td class="p-4">${src.reach}</td>
+                    <td class="p-4">${src.lastrx}</td>
+                    <td class="p-4">${src.last_sample}</td>
+                </tr>`
+            }).join('');
+        }
+
+        // --- Loop 2: Slow Globe/Satellite Update (every 30 seconds) ---
+        let sweepTimer = 30;
+        
+        function generateRandomSatellites() {
+            const sats = [];
+            const prnPool =[5, 12, 14, 19, 24, 32, 41, 50];
+            prnPool.forEach(prn => {
+                // Randomize positions slightly to simulate orbiting over time
+                sats.push({
+                    PRN: prn,
+                    el: Math.floor(Math.random() * 80) + 10, // Elevation 10 to 90
+                    az: Math.floor(Math.random() * 360),     // Azimuth 0 to 360
+                    ss: Math.floor(Math.random() * 30) + 15, // Signal Strength 15 to 45
+                    used: Math.random() > 0.3                // 70% chance it is locked
+                });
+            });
+            return sats;
+        }
+
+        function simulateGlobeUpdate() {
+            const satellites = generateRandomSatellites();
+            let lockedCount = 0;
+            let svgContent = '';
+            
+            // 1. Draw Globe Map
+            const cx = 100, cy = 100, R = 100;
+            satellites.forEach(sat => {
+                if (sat.used) lockedCount++;
+
+                // Math for Skyplot Projection (Mapping 3D to 2D Globe)
+                // Zenith (el=90) is center. Horizon (el=0) is edge.
+                const r = R * (90 - sat.el) / 90;
+                const azRad = sat.az * (Math.PI / 180);
+                
+                // SVG coordinates (0 degrees North is UP, so sin for X, -cos for Y)
+                const x = cx + r * Math.sin(azRad);
+                const y = cy - r * Math.cos(azRad);
+                
+                // Styling
+                const color = sat.used ? '#4ade80' : '#f87171'; // Green if locked, red if tracking
+                const glow = sat.used ? `filter="url(#glow)"` : '';
+                
+                // Render the dot on the globe
+                if (sat.used) {
+                    // Add pinging radar animation behind active ones
+                    svgContent += `<circle cx="${x}" cy="${y}" r="4" fill="${color}" class="ping-slow" style="transform-origin: ${x}px ${y}px"></circle>`;
+                }
+                svgContent += `<circle cx="${x}" cy="${y}" r="3.5" fill="${color}" ${glow}></circle>`;
+                
+                // Add tiny PRN label next to dot
+                svgContent += `<text x="${x+5}" y="${y+3}" font-size="7" font-weight="bold" fill="#ffffff" style="text-shadow: 0px 0px 2px #000;">${sat.PRN}</text>`;
+            });
+            document.getElementById('satellitesLayer').innerHTML = svgContent;
+
+            // 2. Render List next to Globe
+            document.getElementById('satTableBody').innerHTML = satellites.map(sat => {
+                const badge = sat.used 
+                    ? '<span class="px-2 py-1 bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300 rounded text-xs font-bold uppercase tracking-wider border border-green-200 dark:border-green-800">Locked</span>'
+                    : '<span class="px-2 py-1 bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300 rounded text-xs uppercase tracking-wider border border-red-200 dark:border-red-800">Tracking</span>';
+                
+                const signalBarColor = sat.ss > 35 ? 'bg-green-500' : (sat.ss > 25 ? 'bg-yellow-500' : 'bg-red-500');
+                const signalWidth = Math.min((sat.ss / 50) * 100, 100);
+
+                return `
+                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                        <td class="p-4 font-bold text-gray-700 dark:text-gray-300">PRN ${sat.PRN}</td>
+                        <td class="p-4">${sat.el}°</td>
+                        <td class="p-4">${sat.az}°</td>
+                        <td class="p-4">
+                            <div class="flex items-center gap-3">
+                                <span class="w-6">${sat.ss}</span>
+                                <div class="w-16 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                    <div class="h-full ${signalBarColor}" style="width: ${signalWidth}%"></div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="p-4">${badge}</td>
+                    </tr>
+                `;
+            }).join('');
+            
+            document.getElementById('satCount').innerText = `${lockedCount} Linked Sources`;
+            
+            // Reset Sweep Timer
+            sweepTimer = 30;
+        }
+
+        // --- Visual Sweep Progress Bar logic (Updates every 1s) ---
+        setInterval(() => {
+            sweepTimer--;
+            if (sweepTimer < 0) sweepTimer = 0;
+            const pct = (sweepTimer / 30) * 100;
+            document.getElementById('sweepProgressBar').style.width = `${pct}%`;
+        }, 1000);
+
+
+        // Initialize & Start intervals
+        simulateNTPUpdate();
+        simulateGlobeUpdate();
+        
+        setInterval(simulateNTPUpdate, 2000);   // NTP data refreshes quickly
+        setInterval(simulateGlobeUpdate, 30000); // Globe map refreshes every 30s
+    </script>
+</body>
+</html>
