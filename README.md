@@ -1,3 +1,2 @@
-# gps-ntp-mon
+# ntp-docker
 
-Docker image to monitor a local network NTP server.
