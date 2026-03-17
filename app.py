@@ -15,19 +15,37 @@ def load_config():
 def save_config(config):
     with open(CONFIG_FILE, 'w') as f: json.dump(config, f)
 
-def run_command(cmd, config):
-    if config.get("mode") == "local":
+def run_commands_local(cmds):
+    results =[]
+    for cmd in cmds:
         try:
-            return subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=4).stdout
-        except Exception as e: return f"Error: {str(e)}"
-    else:
-        ssh = paramiko.SSHClient()
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        try:
-            ssh.connect(config.get('host'), username=config.get('user'), password=config.get('password') or None, timeout=4, look_for_keys=True)
-            return ssh.exec_command(cmd, timeout=4)[1].read().decode('utf-8')
-        except Exception as e: return f"Error: {str(e)}"
-        finally: ssh.close()
+            out = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=5).stdout
+            results.append(out)
+        except Exception as e:
+            results.append(f"Error: {str(e)}")
+    return results
+
+def run_commands_remote(cmds, config):
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    results =[]
+    try:
+        # Connect once for all commands
+        pwd = config.get('password')
+        if not pwd: pwd = None
+        
+        # look_for_keys=False prevents Docker from crashing while looking for non-existent local keys
+        ssh.connect(config.get('host'), username=config.get('user'), password=pwd, timeout=5, look_for_keys=False)
+        
+        for cmd in cmds:
+            stdin, stdout, stderr = ssh.exec_command(cmd, timeout=5)
+            results.append(stdout.read().decode('utf-8'))
+    except Exception as e:
+        # If connection fails, return the error for all requested commands
+        return [f"Error: {str(e)}"] * len(cmds)
+    finally:
+        ssh.close()
+    return results
 
 @app.route('/')
 def index(): 
@@ -36,14 +54,27 @@ def index():
 @app.route('/api/ntp')
 def get_ntp():
     config = load_config()
-    tracking_out = run_command("chronyc tracking", config)
+    cmds = ["chronyc tracking", "chronyc sources"]
+    
+    # Execute commands based on mode
+    if config.get("mode") == "local":
+        outs = run_commands_local(cmds)
+    else:
+        outs = run_commands_remote(cmds, config)
+        
+    tracking_out = outs[0]
+    sources_out = outs[1]
+    
     offset, sources = "Unknown",[]
+    
+    # Parse tracking
     for line in tracking_out.split('\n'):
         if "System time" in line or "Last offset" in line:
             offset = line.split(':', 1)[-1].strip()
             break
             
-    lines = run_command("chronyc sources", config).strip().split('\n')
+    # Parse sources
+    lines = sources_out.strip().split('\n')
     start_idx = next((i + 1 for i, l in enumerate(lines) if set(l.strip()) == {'='}), -1)
     if start_idx != -1:
         for line in lines[start_idx:]:
@@ -51,16 +82,30 @@ def get_ntp():
             parts = line.split()
             if len(parts) >= 6:
                 sources.append({"state": parts[0], "name": parts[1], "stratum": parts[2], "poll": parts[3], "reach": parts[4], "lastrx": parts[5], "last_sample": " ".join(parts[6:])})
-    return jsonify({"offset": offset, "sources": sources, "error": tracking_out if "Error" in tracking_out else None})
+    
+    # Determine error messages
+    err = tracking_out if "Error" in tracking_out else None
+    if not err and "Error" in sources_out: 
+        err = sources_out
+    
+    return jsonify({"offset": offset, "sources": sources, "error": err})
 
 @app.route('/api/gps')
 def get_gps():
-    gps_out = run_command("timeout 3 gpspipe -w | grep -m 1 '\"class\":\"SKY\"'", load_config())
+    config = load_config()
+    cmd =["timeout 3 gpspipe -w | grep -m 1 '\"class\":\"SKY\"'"]
+    
+    if config.get("mode") == "local":
+        gps_out = run_commands_local(cmd)[0]
+    else:
+        gps_out = run_commands_remote(cmd, config)[0]
+        
     satellites =[]
     try:
         if gps_out and "Error" not in gps_out:
             satellites = json.loads(gps_out).get("satellites",[])
     except: pass
+    
     return jsonify({"satellites": satellites})
 
 @app.route('/api/config', methods=['GET', 'POST'])
@@ -71,4 +116,4 @@ def config_endpoint():
     return jsonify(load_config())
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=55234)
+    app.run(host='0.0.0.0', port=5000)
