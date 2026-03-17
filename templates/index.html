@@ -23,32 +23,32 @@
                 </div>
             </div>
             <div class="flex gap-4">
-                <button onclick="document.documentElement.classList.toggle('dark')" class="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-800 font-medium">Toggle Dark</button>
-                <button onclick="openSettings()" class="px-4 py-2 rounded-lg bg-blue-500 text-white font-medium shadow-lg shadow-blue-500/30">Connection Setup</button>
+                <button onclick="document.documentElement.classList.toggle('dark')" class="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-800 font-medium hover:bg-gray-300 dark:hover:bg-gray-700 transition">Toggle Dark</button>
+                <button onclick="openSettings()" class="px-4 py-2 rounded-lg bg-blue-500 text-white font-medium shadow-lg shadow-blue-500/30 hover:bg-blue-600 transition">Connection Setup</button>
             </div>
         </div>
 
         <!-- Metric Cards -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
-                <h2 class="text-xl font-semibold mb-2">System Time Offset</h2>
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6 border border-gray-200 dark:border-gray-700">
+                <h2 class="text-xl font-semibold mb-2 text-gray-600 dark:text-gray-300">System Time Offset</h2>
                 <div class="text-xl font-mono font-bold" id="sysOffset">Loading...</div>
             </div>
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
-                <h2 class="text-xl font-semibold mb-2">Connection Target</h2>
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6 border border-gray-200 dark:border-gray-700">
+                <h2 class="text-xl font-semibold mb-2 text-gray-600 dark:text-gray-300">Connection Target</h2>
                 <div class="text-lg font-medium text-blue-500" id="connMode">Loading...</div>
             </div>
         </div>
 
         <!-- NTP Sources Table -->
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow overflow-hidden mb-6">
-            <div class="p-4 border-b dark:border-gray-700 flex justify-between">
-                <h2 class="font-semibold">NTP Sources (chronyc sources)</h2>
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow overflow-hidden mb-6 border border-gray-200 dark:border-gray-700">
+            <div class="p-4 border-b dark:border-gray-700 flex justify-between bg-gray-50 dark:bg-gray-800">
+                <h2 class="font-semibold text-gray-700 dark:text-gray-300">NTP Sources (chronyc sources)</h2>
                 <span class="text-xs text-gray-500 font-mono">Updates 2s</span>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-sm font-mono whitespace-nowrap">
-                    <thead class="bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
+                    <thead class="bg-gray-100 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400">
                         <tr><th class="p-4">State</th><th class="p-4">Source</th><th class="p-4">Stratum</th><th class="p-4">Poll</th><th class="p-4">Reach</th><th class="p-4">LastRx</th><th class="p-4">Offset</th></tr>
                     </thead>
                     <tbody id="ntpTableBody" class="divide-y dark:divide-gray-700"></tbody>
@@ -57,11 +57,11 @@
         </div>
 
         <!-- GPS Data -->
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow overflow-hidden flex flex-col lg:flex-row">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow overflow-hidden flex flex-col lg:flex-row border border-gray-200 dark:border-gray-700">
             
             <!-- Skyplot -->
             <div class="p-6 bg-[#0a0f1a] flex flex-col items-center justify-center relative w-full lg:w-1/3 border-b lg:border-b-0 lg:border-r dark:border-gray-700">
-                <h2 class="text-white font-semibold mb-2 text-center">GPS Skyplot</h2>
+                <h2 class="text-white font-semibold mb-2 text-center w-full">GPS Skyplot</h2>
                 <div class="w-full h-1 bg-gray-800 mb-6 rounded overflow-hidden">
                     <div id="sweepBar" class="h-full bg-blue-500 transition-all duration-1000 linear" style="width:100%"></div>
                 </div>
@@ -81,8 +81,8 @@
             <!-- GPS Table -->
             <div class="flex-1 overflow-x-auto h-[350px] overflow-y-auto">
                 <div class="p-4 border-b dark:border-gray-700 flex justify-between bg-gray-50 dark:bg-gray-800 sticky top-0 z-10 shadow-sm">
-                    <span class="font-semibold">Satellites (gpspipe)</span>
-                    <span class="px-3 py-1 rounded-full bg-blue-100 text-blue-800 font-bold text-sm" id="satCount">0 Locked</span>
+                    <span class="font-semibold text-gray-700 dark:text-gray-300">Satellites (gpspipe)</span>
+                    <span class="px-3 py-1 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 font-bold text-sm" id="satCount">0 Locked</span>
                 </div>
                 <table class="w-full text-left text-sm font-mono whitespace-nowrap">
                     <thead class="bg-gray-100 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400">
@@ -95,33 +95,42 @@
     </div>
 
     <!-- Settings Modal -->
-    <div id="settingsModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50 px-4 flex backdrop-blur-sm">
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md p-6">
+    <div id="settingsModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50 px-4 flex backdrop-blur-sm transition-opacity">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md p-6 border border-gray-200 dark:border-gray-700">
             <h2 class="text-2xl font-bold mb-4">Configuration</h2>
             <form id="configForm">
                 <label class="block text-sm font-medium mb-1">Target Mode</label>
-                <select id="mode" class="w-full mb-4 p-2.5 rounded-lg border dark:bg-gray-700 dark:border-gray-600 outline-none" onchange="toggleRemote()">
+                <select id="mode" class="w-full mb-4 p-2.5 rounded-lg border dark:bg-gray-700 dark:border-gray-600 outline-none focus:ring-2 focus:ring-blue-500" onchange="toggleRemote()">
                     <option value="local">Local Host Exec (On this Server)</option>
                     <option value="remote">Remote SSH Exec (Another Server)</option>
                 </select>
                 
                 <div id="remoteFields" class="hidden space-y-4 mb-6">
-                    <input type="text" id="host" class="w-full p-2.5 rounded-lg border dark:bg-gray-700 dark:border-gray-600" placeholder="Server IP (e.g., 192.168.1.10)">
-                    <input type="text" id="user" class="w-full p-2.5 rounded-lg border dark:bg-gray-700 dark:border-gray-600" placeholder="SSH Username">
-                    <input type="password" id="password" class="w-full p-2.5 rounded-lg border dark:bg-gray-700 dark:border-gray-600" placeholder="SSH Password (Leave blank for keys)">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Server IP</label>
+                        <input type="text" id="host" class="w-full p-2.5 rounded-lg border dark:bg-gray-700 dark:border-gray-600 outline-none focus:ring-2 focus:ring-blue-500" placeholder="192.168.1.10">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">SSH Username</label>
+                        <input type="text" id="user" class="w-full p-2.5 rounded-lg border dark:bg-gray-700 dark:border-gray-600 outline-none focus:ring-2 focus:ring-blue-500" placeholder="ubuntu">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">SSH Password</label>
+                        <input type="password" id="password" class="w-full p-2.5 rounded-lg border dark:bg-gray-700 dark:border-gray-600 outline-none focus:ring-2 focus:ring-blue-500" placeholder="Leave blank for key auth">
+                    </div>
                 </div>
                 
                 <div class="flex justify-end gap-3 mt-2">
-                    <button type="button" onclick="closeSettings()" class="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 font-medium">Cancel</button>
-                    <button type="submit" class="px-4 py-2 rounded-lg bg-blue-500 text-white font-medium">Save & Apply</button>
+                    <button type="button" onclick="closeSettings()" class="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition">Cancel</button>
+                    <button type="submit" class="px-4 py-2 rounded-lg bg-blue-500 text-white font-medium hover:bg-blue-600 transition">Save & Apply</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- THE COMPLETE JAVASCRIPT LOGIC -->
+    <!-- Javascript -->
     <script>
-        // 1. UI Modals
+        // UI Modals
         const modal = document.getElementById('settingsModal');
         function openSettings() { modal.classList.remove('hidden'); }
         function closeSettings() { modal.classList.add('hidden'); }
@@ -130,14 +139,14 @@
             document.getElementById('remoteFields').classList.toggle('hidden', isLocal); 
         }
 
-        // 2. Local Browser Clock 
+        // Local Browser Clock 
         function updateLocalClock() {
             document.getElementById('localTimeDisplay').innerText = new Date().toLocaleString();
         }
         setInterval(updateLocalClock, 1000);
         updateLocalClock();
 
-        // 3. Configuration Setup
+        // Configuration Setup
         async function loadUI() {
             try {
                 const res = await fetch('/api/config');
@@ -171,7 +180,7 @@
             fetchGPS();
         });
 
-        // 4. NTP Data Polling (2 Seconds)
+        // NTP Data Polling (2 Seconds)
         async function fetchNTP() {
             try {
                 const res = await fetch('/api/ntp');
@@ -191,7 +200,7 @@
                 document.getElementById('ntpTableBody').innerHTML = (d.sources ||[]).map(s => {
                     const isFocus = s.name.includes('PPS') || s.name.includes('GPS') || s.state.includes('*');
                     const rowCls = isFocus ? 'text-blue-600 dark:text-blue-400 font-bold bg-blue-50/10 dark:bg-blue-900/10' : '';
-                    return `<tr class="${rowCls} border-b dark:border-gray-700">
+                    return `<tr class="${rowCls} border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                         <td class="p-4">${s.state}</td><td class="p-4">${s.name}</td>
                         <td class="p-4">${s.stratum}</td><td class="p-4">${s.poll}</td>
                         <td class="p-4">${s.reach}</td><td class="p-4">${s.lastrx}</td>
@@ -203,18 +212,14 @@
             }
         }
 
-        // 5. GPS Data Polling (30 Seconds) & Skyplot Rendering
+        // GPS Data Polling (30 Seconds) & Skyplot Rendering
         let sweepTimer = 30;
         async function fetchGPS() {
             try {
                 const res = await fetch('/api/gps');
                 const d = await res.json();
-                const sats = d.satellites ||
-                let sats = d.satellites;
-                if (!sats) {
-                    sats = new Array();
-                }
-
+                let sats = d.satellites ||[];
+                
                 let lockedCount = 0;
                 let svgContent = '';
                 let tableHtml = '';
@@ -223,13 +228,11 @@
                     let sat = sats[i];
                     if (sat.used) lockedCount++;
 
-                    // Math for the Globe Skyplot Projection
                     let r = 100 * (90 - sat.el) / 90;
                     let azRad = sat.az * (Math.PI / 180);
                     let x = 100 + r * Math.sin(azRad);
                     let y = 100 - r * Math.cos(azRad);
-
-                    let color = sat.used ? '#4ade80' : '#f87171'; // Green for locked, Red for visible
+                    let color = sat.used ? '#4ade80' : '#f87171';
                     
                     if (sat.used) {
                         svgContent += `<circle cx="${x}" cy="${y}" r="4" fill="${color}" class="ping-slow" style="transform-origin: ${x}px ${y}px"></circle>`;
@@ -237,7 +240,6 @@
                     svgContent += `<circle cx="${x}" cy="${y}" r="3.5" fill="${color}"></circle>`;
                     svgContent += `<text x="${x+5}" y="${y+3}" font-size="7" font-weight="bold" fill="#ffffff">${sat.PRN}</text>`;
 
-                    // Math for the Satellite Table Rows
                     let badge = sat.used ? '<span class="text-green-500 font-bold">Locked</span>' : '<span class="text-gray-500">Visible</span>';
                     tableHtml += `<tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                         <td class="p-4 font-bold">PRN ${sat.PRN}</td>
@@ -248,33 +250,29 @@
                     </tr>`;
                 }
 
-                // Inject into the HTML
                 document.getElementById('satellitesLayer').innerHTML = svgContent;
                 document.getElementById('satTableBody').innerHTML = tableHtml;
                 document.getElementById('satCount').innerText = lockedCount + ' Locked';
-                sweepTimer = 30; // Reset the 30-second sweep timer
+                sweepTimer = 30;
                 
             } catch(e) {
                 console.error("GPS Fetch Failed", e);
             }
         }
 
-        // 6. Visual Sweep Progress Bar logic (Updates every 1s)
+        // Visual Sweep Progress Bar logic (Updates every 1s)
         setInterval(() => {
             sweepTimer--;
             if (sweepTimer < 0) sweepTimer = 0;
             document.getElementById('sweepBar').style.width = ((sweepTimer / 30) * 100) + '%';
         }, 1000);
 
-        // 7. Initialize Application
+        // Initialize
         loadUI();
         fetchNTP();
         fetchGPS();
-
-        // 8. Start Background Loops
-        setInterval(fetchNTP, 2000);    // System time updates every 2 seconds
-        setInterval(fetchGPS, 30000);   // Satellite map updates every 30 seconds
-
+        setInterval(fetchNTP, 2000);
+        setInterval(fetchGPS, 30000);
     </script>
 </body>
 </html>
