@@ -35,7 +35,7 @@ def run_commands_remote(cmds, config):
         if not pwd: pwd = None
         
         # look_for_keys=False prevents Docker from crashing while looking for non-existent local keys
-        ssh.connect(config.get('host'), username=config.get('user'), password=pwd, timeout=5, look_for_keys=False)
+        ssh.connect(config.get('host'), username=config.get('user'), password=pwd, timeout=10, banner_timeout=15, auth_timeout=15, look_for_keys=False)
         
         for cmd in cmds:
             stdin, stdout, stderr = ssh.exec_command(cmd, timeout=5)
