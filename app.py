@@ -35,7 +35,7 @@ def run_commands_remote(cmds, config):
         if not pwd: pwd = None
         
         # look_for_keys=False prevents Docker from crashing while looking for non-existent local keys
-        ssh.connect(config.get('host'), username=config.get('user'), password=pwd, timeout=10, banner_timeout=15, auth_timeout=15, look_for_keys=False)
+        ssh.connect(config.get('host'), username=config.get('user'), password=pwd, timeout=5, look_for_keys=False)
         
         for cmd in cmds:
             stdin, stdout, stderr = ssh.exec_command(cmd, timeout=5)
@@ -93,8 +93,7 @@ def get_ntp():
 @app.route('/api/gps')
 def get_gps():
     config = load_config()
-    # Read 12 lines of raw GPS JSON output and exit immediately
-    cmd =["timeout 3 gpspipe -w -n 12"]
+    cmd =["timeout 3 gpspipe -w | grep -m 1 '\"class\":\"SKY\"'"]
     
     if config.get("mode") == "local":
         gps_out = run_commands_local(cmd)[0]
@@ -102,24 +101,12 @@ def get_gps():
         gps_out = run_commands_remote(cmd, config)[0]
         
     satellites =[]
-    gps_time = "Waiting for lock..."
-    
     try:
         if gps_out and "Error" not in gps_out:
-            for line in gps_out.strip().split('\n'):
-                if not line: continue
-                try:
-                    data = json.loads(line)
-                    # Grab Satellites
-                    if data.get("class") == "SKY":
-                        satellites = data.get("satellites",[])
-                    # Grab GPS Time
-                    elif data.get("class") == "TPV" and "time" in data:
-                        gps_time = data.get("time")
-                except: pass
+            satellites = json.loads(gps_out).get("satellites",[])
     except: pass
     
-    return jsonify({"satellites": satellites, "gps_time": gps_time})
+    return jsonify({"satellites": satellites})
 
 @app.route('/api/config', methods=['GET', 'POST'])
 def config_endpoint():
@@ -129,4 +116,4 @@ def config_endpoint():
     return jsonify(load_config())
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=55234)
+    app.run(host='0.0.0.0', port=5000)
