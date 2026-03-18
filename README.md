@@ -25,7 +25,7 @@ services:
 ```
 
 # Roadmap
-## These are listed in no particular order
+These are listed in no particular order
 
 1. PWA conversion
 2. Release update notifications
