@@ -28,8 +28,9 @@ services:
 # Roadmap
 These are listed in no particular order
 
-1. PWA conversion
-2. Release update notifications
-3. Compact image
-4. Convert javascript in HTML to a script call as a separate file rather than being in the HTML
-5. Color picker to choose your favorite color for the background in light or dark mode
+1. Hashing of password in config.json file
+2. PWA conversion
+3. Release update notifications
+4. Compact image
+5. Convert javascript in HTML to a script call as a separate file rather than being in the HTML
+6. Color picker to choose your favorite color for the background in light or dark mode
