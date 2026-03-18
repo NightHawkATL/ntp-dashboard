@@ -93,7 +93,8 @@ def get_ntp():
 @app.route('/api/gps')
 def get_gps():
     config = load_config()
-    cmd =["timeout 3 gpspipe -w | grep -m 1 '\"class\":\"SKY\"'"]
+    # Read 12 lines of raw GPS JSON output and exit immediately
+    cmd =["timeout 3 gpspipe -w -n 12"]
     
     if config.get("mode") == "local":
         gps_out = run_commands_local(cmd)[0]
@@ -101,12 +102,24 @@ def get_gps():
         gps_out = run_commands_remote(cmd, config)[0]
         
     satellites =[]
+    gps_time = "Waiting for lock..."
+    
     try:
         if gps_out and "Error" not in gps_out:
-            satellites = json.loads(gps_out).get("satellites",[])
+            for line in gps_out.strip().split('\n'):
+                if not line: continue
+                try:
+                    data = json.loads(line)
+                    # Grab Satellites
+                    if data.get("class") == "SKY":
+                        satellites = data.get("satellites",[])
+                    # Grab GPS Time
+                    elif data.get("class") == "TPV" and "time" in data:
+                        gps_time = data.get("time")
+                except: pass
     except: pass
     
-    return jsonify({"satellites": satellites})
+    return jsonify({"satellites": satellites, "gps_time": gps_time})
 
 @app.route('/api/config', methods=['GET', 'POST'])
 def config_endpoint():
