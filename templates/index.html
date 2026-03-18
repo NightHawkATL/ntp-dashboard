@@ -152,17 +152,27 @@
         let baseGpsTimeMs = null;
         let fetchLocalTimeMs = null;
 
-        // Helper function to format time as "MM/DD/YYYY, HH:MM:SS.mmm AM/PM"
+// Helper function for Local Time
         function formatTimeWithMs(date) {
             const dateStr = date.toLocaleDateString();
             let hours = date.getHours();
             const ampm = hours >= 12 ? 'PM' : 'AM';
             hours = hours % 12;
-            hours = hours ? hours : 12; // '0' should be '12'
+            hours = hours ? hours : 12; 
             const mins = date.getMinutes().toString().padStart(2, '0');
             const secs = date.getSeconds().toString().padStart(2, '0');
             const ms = date.getMilliseconds().toString().padStart(3, '0');
             return `${dateStr}, ${hours}:${mins}:${secs}.${ms} ${ampm}`;
+        }
+
+        // Helper function for strict UTC/GMT Satellite Time
+        function formatUTCWithMs(date) {
+            const dateStr = date.getUTCFullYear() + "-" + (date.getUTCMonth()+1).toString().padStart(2,'0') + "-" + date.getUTCDate().toString().padStart(2,'0');
+            const hours = date.getUTCHours().toString().padStart(2, '0');
+            const mins = date.getUTCMinutes().toString().padStart(2, '0');
+            const secs = date.getUTCSeconds().toString().padStart(2, '0');
+            const ms = date.getUTCMilliseconds().toString().padStart(3, '0');
+            return `${dateStr}, ${hours}:${mins}:${secs}.${ms} UTC`;
         }
 
         function updateClocks() {
@@ -173,13 +183,14 @@
 
             // Render Ticking GPS Time (if we have a lock)
             if (baseGpsTimeMs !== null) {
-                // Calculate exactly how many milliseconds have passed since the last GPS data packet arrived
+                // Calculate elapsed time to push the clock forward
                 const elapsed = localNow.getTime() - fetchLocalTimeMs;
                 const tickingGpsTime = new Date(baseGpsTimeMs + elapsed);
-                document.getElementById('gpsTimeDisplay').innerText = formatTimeWithMs(tickingGpsTime);
+                
+                // Display in strict UTC format
+                document.getElementById('gpsTimeDisplay').innerText = formatUTCWithMs(tickingGpsTime);
             }
-        }
-        
+        }        
         // Run the clock updater every 40ms to make the milliseconds tick rapidly and smoothly
         setInterval(updateClocks, 40);
 
