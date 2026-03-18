@@ -29,3 +29,4 @@ services:
 2. Release update notifications
 3. Compact image
 4. Convert javascript in HTML to a script call as a separate file rather than being in the HTML
+5. Color picker to choose your favorite color for the background in light or dark mode
