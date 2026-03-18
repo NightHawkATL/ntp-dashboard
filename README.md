@@ -34,6 +34,3 @@ These are listed in no particular order
 4. Compact image
 5. Convert javascript in HTML to a script call as a separate file rather than being in the HTML
 6. Color picker to choose your favorite color for the background in light or dark mode
-
-# Troubleshooting
-If you do not see any data at first, you will need to check that you have Chrony installed for your Docker host. I have built and tested this on an Ubuntu 24.04 machine but most Debian-based OS's are moving towards using Chrony. Please check that this is installed following the installation directions for Chrony here
