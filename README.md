@@ -6,7 +6,7 @@ The default use for this app is to pull the NTP data from your docker host and s
 
 <img width="933" height="783" alt="image" src="https://github.com/user-attachments/assets/133a3ce3-d85e-4f36-91f5-881dff9aab09" />
 
-When connecting the app to a local NTP GPS-enabled server over SSH, you will then see the NMEA and PTP data, almong with the GPS data visualized. All you have to do is click on the "Connection Setup" button and put in the SSH credentials for your local NTP server and it will make the connection and populate the data correctly.
+When connecting the app to a local NTP GPS-enabled server over SSH, you will then see the NMEA and PTP data, almong with the GPS data visualized. All you have to do is click on the "Connection Setup" button and put in the SSH credentials for your local NTP server and it will make the connection and populate the data correctly. The login credentials are stored locally in a "config.json" file that is stored whereever you set the bind mount to. The password is stored in plain-text (at the moment) and is never sent to anywhere outside of the app container.
 
 <img width="936" height="864" alt="image" src="https://github.com/user-attachments/assets/c236e758-f5ef-4e8b-8a81-6bea147fdbe2" />
 
