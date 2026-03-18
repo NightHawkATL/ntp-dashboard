@@ -1,6 +1,6 @@
 <img width="1280" height="640" alt="ntp-dashboard-title" src="https://github.com/user-attachments/assets/199cf686-c90e-45d9-b533-2d5818451ff6" />
 
-**This is a current work in progress. It was coded with AI to see if it was possible and will be later be scanned, updated, and code revised to make sure that the AI aspect of it was just temporary. I want to look over the code now that it is running and working and be able to make updates and modifications myself. I will also be working on doing actual releases once I get to the point I feel it is ready.**
+**This is a current work in progress. It was coded with AI to see if it was possible and will be later be scanned, updated, and code revised to make sure that the AI aspect of it was just temporary. I want to look over the code now that it is running and working and be able to make updates and modifications myself.**
 
 The default use for this app is to pull the NTP data from your docker host and show the servers that it is using. It will display the current system time and time offset from NTP.
 
@@ -23,3 +23,9 @@ services:
       - ./config.json:/app/config.json # Persists UI settings
     restart: unless-stopped
 ```
+
+# Roadmap
+1. PWA conversion
+2. Release update notifications
+3. Compact image
+4. Convert javascript in HTML to a script call as a separate file rather than being in the HTML
