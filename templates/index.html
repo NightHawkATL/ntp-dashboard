@@ -137,9 +137,9 @@
         </div>
     </div>
 
-    <!-- Javascript -->
+<!-- THE COMPLETE JAVASCRIPT LOGIC -->
     <script>
-        // UI Modals
+        // 1. UI Modals
         const modal = document.getElementById('settingsModal');
         function openSettings() { modal.classList.remove('hidden'); }
         function closeSettings() { modal.classList.add('hidden'); }
@@ -148,14 +148,42 @@
             document.getElementById('remoteFields').classList.toggle('hidden', isLocal); 
         }
 
-        // Local Browser Clock 
-        function updateLocalClock() {
-            document.getElementById('localTimeDisplay').innerText = new Date().toLocaleString();
-        }
-        setInterval(updateLocalClock, 1000);
-        updateLocalClock();
+        // 2. NEW CLOCK LOGIC (Milliseconds & Live GPS Ticking)
+        let baseGpsTimeMs = null;
+        let fetchLocalTimeMs = null;
 
-        // Configuration Setup
+        // Helper function to format time as "MM/DD/YYYY, HH:MM:SS.mmm AM/PM"
+        function formatTimeWithMs(date) {
+            const dateStr = date.toLocaleDateString();
+            let hours = date.getHours();
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12; // '0' should be '12'
+            const mins = date.getMinutes().toString().padStart(2, '0');
+            const secs = date.getSeconds().toString().padStart(2, '0');
+            const ms = date.getMilliseconds().toString().padStart(3, '0');
+            return `${dateStr}, ${hours}:${mins}:${secs}.${ms} ${ampm}`;
+        }
+
+        function updateClocks() {
+            const localNow = new Date();
+            
+            // Render Local Time
+            document.getElementById('localTimeDisplay').innerText = formatTimeWithMs(localNow);
+
+            // Render Ticking GPS Time (if we have a lock)
+            if (baseGpsTimeMs !== null) {
+                // Calculate exactly how many milliseconds have passed since the last GPS data packet arrived
+                const elapsed = localNow.getTime() - fetchLocalTimeMs;
+                const tickingGpsTime = new Date(baseGpsTimeMs + elapsed);
+                document.getElementById('gpsTimeDisplay').innerText = formatTimeWithMs(tickingGpsTime);
+            }
+        }
+        
+        // Run the clock updater every 40ms to make the milliseconds tick rapidly and smoothly
+        setInterval(updateClocks, 40);
+
+        // 3. Configuration Setup
         async function loadUI() {
             try {
                 const res = await fetch('/api/config');
@@ -189,7 +217,7 @@
             fetchGPS();
         });
 
-        // NTP Data Polling (2 Seconds)
+        // 4. NTP Data Polling (2 Seconds)
         async function fetchNTP() {
             try {
                 const res = await fetch('/api/ntp');
@@ -221,23 +249,25 @@
             }
         }
 
-        // GPS Data Polling (30 Seconds) & Skyplot Rendering
+        // 5. GPS Data Polling (30 Seconds) & Skyplot Rendering
         let sweepTimer = 30;
         async function fetchGPS() {
             try {
                 const res = await fetch('/api/gps');
                 const d = await res.json();
-
-                // Updated
-                // --- NEW GPS TIME LOGIC ---
+                
+                // --- CAPTURE THE RAW GPS TIME FOR THE LIVE TICKER ---
                 if (d.gps_time && d.gps_time.includes('T')) {
-                    document.getElementById('gpsTimeDisplay').innerText = new Date(d.gps_time).toLocaleString();
+                    const parsed = new Date(d.gps_time);
+                    if (!isNaN(parsed)) {
+                        baseGpsTimeMs = parsed.getTime();
+                        fetchLocalTimeMs = Date.now();
+                    }
                 } else {
+                    baseGpsTimeMs = null;
                     document.getElementById('gpsTimeDisplay').innerText = d.gps_time || 'Waiting for lock...';
                 }
-                // --------------------------
-                // updated
-                
+
                 let sats = d.satellites ||[];
                 
                 let lockedCount = 0;
@@ -280,14 +310,14 @@
             }
         }
 
-        // Visual Sweep Progress Bar logic (Updates every 1s)
+        // 6. Visual Sweep Progress Bar logic (Updates every 1s)
         setInterval(() => {
             sweepTimer--;
             if (sweepTimer < 0) sweepTimer = 0;
             document.getElementById('sweepBar').style.width = ((sweepTimer / 30) * 100) + '%';
         }, 1000);
 
-        // Initialize
+        // 7. Initialize
         loadUI();
         fetchNTP();
         fetchGPS();
