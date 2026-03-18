@@ -90,7 +90,6 @@ def get_ntp():
     
     return jsonify({"offset": offset, "sources": sources, "error": err})
 
-#//------- updated
 @app.route('/api/gps')
 def get_gps():
     config = load_config()
@@ -121,7 +120,6 @@ def get_gps():
     except: pass
     
     return jsonify({"satellites": satellites, "gps_time": gps_time})
-#//------- updated
 
 @app.route('/api/config', methods=['GET', 'POST'])
 def config_endpoint():
