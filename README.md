@@ -16,7 +16,7 @@ You can deploy the app using the following Docker Compose:
 ```
 services:
   ntp-dashboard:
-    image: nighthawkatl/ntp-docker-ntp-dashboard:latest
+    image: nighthawkatl/ntp-dashboard:latest
     container_name: ntp-dashboard
     network_mode: "host" # Allows container to query host's chrony/gpsd
     volumes:
