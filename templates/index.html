@@ -14,12 +14,14 @@
 <body class="bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-gray-100 min-h-screen pb-10 transition-colors">
     <div class="container mx-auto px-4 py-8 max-w-6xl">
         
+        <!-- updated -->
         <!-- Header & Local Time -->
         <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
             <div>
-                <h1 class="text-3xl font-bold text-blue-500">NTP & GPS Dashboard</h1>
-                <div class="text-sm text-gray-500 dark:text-gray-400 mt-1 font-mono">
-                    Local Display Time: <span id="localTimeDisplay" class="font-bold text-gray-700 dark:text-gray-200"></span>
+                <img src="/images/ntp-dashboard-icon.png" alt="site logo" class="logo" size="150x150"><h1 class="text-3xl font-bold text-blue-500">NTP & GPS Dashboard</h1>
+                <div class="text-sm text-gray-500 dark:text-gray-400 mt-2 font-mono flex flex-col gap-1">
+                    <div>Local Display Time: <span id="localTimeDisplay" class="font-bold text-gray-700 dark:text-gray-200"></span></div>
+                    <div>GPS Satellite Time: <span id="gpsTimeDisplay" class="font-bold text-blue-500">Waiting for sync...</span></div>
                 </div>
             </div>
             <div class="flex gap-4">
@@ -27,6 +29,7 @@
                 <button onclick="openSettings()" class="px-4 py-2 rounded-lg bg-blue-500 text-white font-medium shadow-lg shadow-blue-500/30 hover:bg-blue-600 transition">Connection Setup</button>
             </div>
         </div>
+        <!-- updated -->
 
         <!-- Metric Cards -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -218,6 +221,17 @@
             try {
                 const res = await fetch('/api/gps');
                 const d = await res.json();
+
+                // Updated
+                // --- NEW GPS TIME LOGIC ---
+                if (d.gps_time && d.gps_time.includes('T')) {
+                    document.getElementById('gpsTimeDisplay').innerText = new Date(d.gps_time).toLocaleString();
+                } else {
+                    document.getElementById('gpsTimeDisplay').innerText = d.gps_time || 'Waiting for lock...';
+                }
+                // --------------------------
+                // updated
+                
                 let sats = d.satellites ||[];
                 
                 let lockedCount = 0;
