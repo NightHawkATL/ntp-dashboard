@@ -4,11 +4,11 @@
 
 The default use for this app is to pull the NTP data from your docker host and show the servers that it is using. It will display the current system time and time offset from NTP.
 
-<img width="1162" height="906" alt="image" src="https://github.com/user-attachments/assets/b0686f4a-64fe-4651-948b-4b9ba9a0f897" />
+<img width="934" height="786" alt="image" src="https://github.com/user-attachments/assets/cc2b9d4d-8e8b-43f3-92ad-b6e54b274af7" />
 
 When connecting the app to a local NTP GPS-enabled server over SSH, you will then see the NMEA and PTP data, almong with the GPS data visualized. All you have to do is click on the "Connection Setup" button and put in the SSH credentials for your local NTP server and it will make the connection and populate the data correctly.
 
-<img width="955" height="813" alt="image" src="https://github.com/user-attachments/assets/142e8a9c-e8e5-4ecd-8bdf-c74a1f7d2300" />
+<img width="946" height="865" alt="image" src="https://github.com/user-attachments/assets/97800d2d-af11-4a9c-972b-3e44c6807005" />
 
 The NTP Sources data will refresh every 2 seconds and the Satellites data will refresh every 30 seconds. The GPS Satellite Time display will update every 30 seconds as the satellite data is updated.
 
