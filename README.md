@@ -10,7 +10,7 @@ The standard deployment ("out-of-the-box experience" or "OOBE") for this app is 
 
 When connecting the app to a local NTP GPS-enabled server over SSH, you will then see the NMEA and PTP data, almong with the GPS data visualized. All you have to do is click on the "Connection Setup" button and put in the SSH credentials for your local NTP server and it will make the connection and populate the data correctly. The login credentials are stored locally in a "config.json" file that is stored whereever you set the bind mount to. The password is stored in plain-text (at the moment) and is never sent to anywhere outside of the app container.
 
-<img width="936" height="864" alt="image" src="https://github.com/user-attachments/assets/c236e758-f5ef-4e8b-8a81-6bea147fdbe2" />
+<img width="952" height="867" alt="image" src="https://github.com/user-attachments/assets/15c8e313-4ef1-4af9-9cdc-6eb1b4b25f91" />
 
 The NTP Sources data will refresh every 2 seconds and the Satellites data will refresh every 30 seconds. The GPS Satellite Time display will update every 30 seconds as the satellite data is updated.
 
