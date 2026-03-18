@@ -10,7 +10,7 @@ When connecting the app to a local NTP GPS-enabled server over SSH, you will the
 
 <img width="955" height="813" alt="image" src="https://github.com/user-attachments/assets/142e8a9c-e8e5-4ecd-8bdf-c74a1f7d2300" />
 
-The NTP Sources data will refresh every 2 seconds and the Satellites data will refresh every 30 seconds.
+The NTP Sources data will refresh every 2 seconds and the Satellites data will refresh every 30 seconds. The GPS Satellite Time display will update every 30 seconds as the satellite data is updated.
 
 You can deploy the app using the following Docker Compose:
 ```
