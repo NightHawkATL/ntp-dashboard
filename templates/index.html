@@ -14,22 +14,28 @@
 <body class="bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-gray-100 min-h-screen pb-10 transition-colors">
     <div class="container mx-auto px-4 py-8 max-w-6xl">
         
-        <!-- updated -->
         <!-- Header & Local Time -->
         <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-            <div>
-                <img src="/images/ntp-dashboard-logo.svg" alt="site logo" class="logo" size="150x150"><h1 class="text-3xl font-bold text-blue-500">NTP & GPS Dashboard</h1>
-                <div class="text-sm text-gray-500 dark:text-gray-400 mt-2 font-mono flex flex-col gap-1">
-                    <div>Local Display Time: <span id="localTimeDisplay" class="font-bold text-gray-700 dark:text-gray-200"></span></div>
-                    <div>GPS Satellite Time: <span id="gpsTimeDisplay" class="font-bold text-blue-500">Waiting for sync...</span></div>
+            
+            <!-- LEFT SIDE: Logo & Titles -->
+            <div class="flex items-center gap-5">
+                <img src="/static/images/logo.png" alt="NTP Server Logo" class="w-20 h-20 md:w-24 md:h-24 object-contain rounded-full shadow-[0_0_15px_rgba(59,130,246,0.3)] border border-blue-500/30 bg-[#0f172a] p-1">
+                
+                <div>
+                    <h1 class="text-3xl font-bold text-blue-500">NTP & GPS Dashboard</h1>
+                    <div class="text-sm text-gray-500 dark:text-gray-400 mt-2 font-mono flex flex-col gap-1">
+                        <div>Local Display Time: <span id="localTimeDisplay" class="font-bold text-gray-700 dark:text-gray-200"></span></div>
+                        <div>GPS Satellite Time: <span id="gpsTimeDisplay" class="font-bold text-blue-500">Waiting for sync...</span></div>
+                    </div>
                 </div>
             </div>
+
+            <!-- RIGHT SIDE: Buttons -->
             <div class="flex gap-4">
                 <button onclick="document.documentElement.classList.toggle('dark')" class="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-800 font-medium hover:bg-gray-300 dark:hover:bg-gray-700 transition">Toggle Dark</button>
                 <button onclick="openSettings()" class="px-4 py-2 rounded-lg bg-blue-500 text-white font-medium shadow-lg shadow-blue-500/30 hover:bg-blue-600 transition">Connection Setup</button>
             </div>
         </div>
-        <!-- updated -->
 
         <!-- Metric Cards -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
