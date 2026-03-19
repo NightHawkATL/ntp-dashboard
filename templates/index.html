@@ -211,7 +211,7 @@
                 document.getElementById('host').value = conf.host || '';
                 document.getElementById('user').value = conf.user || '';
                 
-                const modeText = conf.mode === 'local' ? 'Local System (Docker Host)' : `SSH Remote: ${conf.user}@${conf.host}`;
+                const modeText = conf.mode === 'local' ? 'Local System (Docker Host)' : `SSH Remote: ${conf.host}`;
                 document.getElementById('connMode').innerText = modeText;
                 toggleRemote();
             } catch (e) { console.error("Config load error", e); }
