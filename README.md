@@ -23,6 +23,8 @@ services:
     network_mode: "host" # Allows container to query host's chrony/gpsd
     volumes:
       - ./config.json:/app/config.json # Persists UI settings
+    environment:
+      - DEBUG_MODE=true
     restart: unless-stopped
 ```
 # Prerequisites
