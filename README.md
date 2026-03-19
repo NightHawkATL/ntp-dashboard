@@ -1,10 +1,10 @@
-<img width="1280" height="640" alt="ntp-dashboard-title" src="https://github.com/user-attachments/assets/199cf686-c90e-45d9-b533-2d5818451ff6" />
+<img width="1280" height="640" alt="ntp-dashboard-title" src="https://github.com/user-attachments/assets/fd519072-43d6-4c5e-bb9e-cda729db4bd3" />
 
 **This is a current work in progress. It was coded with AI to see if it was possible and will be scanned, updated, and code revised to make sure that the code stays secure and clean. I want to look over the code now that it is running and working and be able to make updates and modifications myself.**
 
 When I first built my NTP-PPS server, I followed this blog on how to do it: https://blog.networkprofile.org/gps-backed-local-ntp-server/. Once I was done, I wanted to be able to check on it occasionally to make sure everything was still working as expected. I just wanted to be able to monitor it without doing a bunch of extra work with Grafana and whatever else would be needed. That is where I came up with this app, to fill a need that I had for a dashboard for my NTP server. I couldn't find anything that I liked or was anywhere close to what I wanted, so I had to wait for AI to get good enough and for me to want to use it to come up with this solution. I do hope you enjoy it and consider giving it a star.
 
-The standard deployment ("out-of-the-box experience" or "OOBE") for this app is to pull the NTP clock data from Chrony on your docker host and show the servers that it is using. It will display the current system time and time offset from NTP. THis is similar to an "NTP Client" that just pulls the time based on how the Docker host is setup for time resolution.
+The standard deployment ("out-of-the-box experience" or "OOBE") for this app is to pull the NTP clock data from Chrony on your docker host and show the servers that it is using. It will display the current system time and time offset from NTP. This is similar to an "NTP Client" that just pulls the time based on how the Docker host is setup for time resolution.
 
 <img width="936" height="786" alt="image" src="https://github.com/user-attachments/assets/4b32d205-9d3b-49f8-b663-019812134f35" />
 
