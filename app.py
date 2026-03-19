@@ -129,4 +129,11 @@ def config_endpoint():
     return jsonify(load_config())
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=55234)
+    # Check if the environment variable DEBUG_MODE is set to "true" (defaults to "false")
+    is_debug = os.environ.get('DEBUG_MODE', 'false').lower() == 'true'
+    
+    if is_debug:
+        print("⚠️ DEBUG MODE ENABLED - Detailed errors will be shown in the browser.")
+        
+    # Pass the variable into Flask's run command
+    app.run(host='0.0.0.0', port=55234, debug=is_debug)
