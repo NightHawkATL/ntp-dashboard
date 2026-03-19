@@ -19,13 +19,8 @@ def run_commands_local(cmds):
     results =[]
     for cmd in cmds:
         try:
-            # Added stderr=subprocess.STDOUT to capture hidden error messages
-            proc = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=5)
-            # If the command fails (return code is not 0), flag it as an error
-            if proc.returncode != 0:
-                results.append(f"Error: {proc.stdout.strip()}")
-            else:
-                results.append(proc.stdout)
+            out = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=5).stdout
+            results.append(out)
         except Exception as e:
             results.append(f"Error: {str(e)}")
     return results
@@ -35,23 +30,19 @@ def run_commands_remote(cmds, config):
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     results =[]
     try:
+        # Connect once for all commands
         pwd = config.get('password')
         if not pwd: pwd = None
-        ssh.connect(config.get('host'), username=config.get('user'), password=pwd, timeout=10, banner_timeout=15, auth_timeout=15, look_for_keys=False)
+        
+        # look_for_keys=False prevents Docker from crashing while looking for non-existent local keys
+        ssh.connect(config.get('host'), username=config.get('user'), password=pwd, timeout=5, look_for_keys=False)
+        
         for cmd in cmds:
             stdin, stdout, stderr = ssh.exec_command(cmd, timeout=5)
-            # Capture both standard output and error output over SSH
-            err_out = stderr.read().decode('utf-8').strip()
-            std_out = stdout.read().decode('utf-8').strip()
-            
-            exit_status = stdout.channel.recv_exit_status()
-            if exit_status != 0:
-                # If SSH command failed, combine errors so the UI sees them
-                results.append(f"Error: {err_out if err_out else std_out}")
-            else:
-                results.append(std_out)
+            results.append(stdout.read().decode('utf-8'))
     except Exception as e:
-        return[f"Error: {str(e)}"] * len(cmds)
+        # If connection fails, return the error for all requested commands
+        return [f"Error: {str(e)}"] * len(cmds)
     finally:
         ssh.close()
     return results
