@@ -47,6 +47,11 @@ jobs:
           images: |
             ${{ secrets.DOCKER_USERNAME }}/ntp-dashboard
             ghcr.io/${{ github.repository }}
+          tags: |
+            # 1. Automatically tag with the version (e.g., v0.0.4) when you publish a Release
+            type=semver,pattern={{version}}
+            # 2. Always tag the main branch as 'latest' when you push code
+            type=raw,value=latest,enable={{is_default_branch}}
 
       # The actual build command
       - name: Build and push multi-arch Docker image
