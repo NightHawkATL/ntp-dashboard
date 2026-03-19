@@ -24,7 +24,7 @@ services:
     volumes:
       - ./config.json:/app/config.json # Persists UI settings
     environment:
-      - DEBUG_MODE=true
+      - DEBUG_MODE=false
     restart: unless-stopped
 ```
 # Prerequisites
