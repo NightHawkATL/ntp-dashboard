@@ -3,10 +3,12 @@ name: Build and Publish Docker Image
 # This tells GitHub to run this script whenever you push to the "main" branch, 
 # or whenever you publish a new Release/Tag (like v1.0.0)
 on:
-  push:
-    branches: [ "main" ]
+  # 1. Trigger ONLY when you publish a new Release (like v0.0.4)
   release:
     types: [published]
+    
+  # 2. Add a manual "Run Workflow" button in the GitHub Actions tab
+  workflow_dispatch:
 
 jobs:
   build-and-push:
