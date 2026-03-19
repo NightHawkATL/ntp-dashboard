@@ -37,7 +37,7 @@ These are listed in no particular order
 2. PWA conversion
 3. Release update notifications
 4. Compact image
-5. Convert javascript in HTML to a script call as a separate file rather than being in the HTML
+~~5. Convert javascript in HTML to a script call as a separate file rather than being in the HTML~~
 6. Color picker to choose your favorite color for the background in light or dark mode
 
 # Troublehooting
