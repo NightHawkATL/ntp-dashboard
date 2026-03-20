@@ -4,6 +4,7 @@ import paramiko
 
 app = Flask(__name__)
 CONFIG_FILE = 'config.json'
+APP_VERSION = "v0.0.4"          # <--- NEW: Hard-code your version here
 
 def load_config():
     if os.path.exists(CONFIG_FILE):
@@ -57,7 +58,8 @@ def run_commands_remote(cmds, config):
     return results
 @app.route('/')
 def index(): 
-    return render_template('index.html')
+    # Pass the version variable directly into the HTML file
+    return render_template('index.html', app_version=APP_VERSION)
 
 @app.route('/api/ntp')
 def get_ntp():
