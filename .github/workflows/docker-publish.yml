@@ -13,15 +13,19 @@ on:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    
+    # NEW: Forces GitHub to use the updated Node 24 engine to clear the warning
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      
     permissions:
       contents: read
-      packages: write # Needed to push to GitHub Container Registry
+      packages: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Sets up QEMU which allows GitHub to build ARM64 images for your Raspberry Pi
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
@@ -41,7 +45,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # This step automatically tags your image (e.g., 'latest' for main branch, or 'v1.0.0' for releases)
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@v5
@@ -50,14 +53,12 @@ jobs:
             ${{ secrets.DOCKER_USERNAME }}/ntp-dashboard
             ghcr.io/${{ github.repository }}
           tags: |
-            # 1. Automatically tag with the version (e.g., v0.0.4) when you publish a Release
             type=semver,pattern={{version}}
-            # 2. Always tag the main branch as 'latest' when you push code
             type=raw,value=latest,enable={{is_default_branch}}
 
-      # The actual build command
+      # UPDATED: Bumped to v6
       - name: Build and push multi-arch Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           push: true
