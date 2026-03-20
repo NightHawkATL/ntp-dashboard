@@ -1,10 +1,44 @@
 import os, json, subprocess
 from flask import Flask, render_template, jsonify, request
 import paramiko
+from cryptography.fernet import Fernet
 
 app = Flask(__name__)
-CONFIG_FILE = 'config.json'
 
+APP_VERSION = "v0.0.5"
+
+# --- NEW: Directory and File Paths ---
+DATA_DIR = '/app/data'
+CONFIG_FILE = os.path.join(DATA_DIR, 'config.json')
+KEY_FILE = os.path.join(DATA_DIR, 'secret.key')
+
+# Ensure the data directory exists
+os.makedirs(DATA_DIR, exist_ok=True)
+
+# --- NEW: Encryption Logic ---
+def get_cipher():
+    # If a key doesn't exist, generate one and save it
+    if not os.path.exists(KEY_FILE):
+        key = Fernet.generate_key()
+        with open(KEY_FILE, 'wb') as key_file:
+            key_file.write(key)
+    else:
+        with open(KEY_FILE, 'rb') as key_file:
+            key = key_file.read()
+    return Fernet(key)
+
+def encrypt_pwd(pwd):
+    if not pwd: return ""
+    return get_cipher().encrypt(pwd.encode()).decode()
+
+def decrypt_pwd(encrypted_pwd):
+    if not encrypted_pwd: return ""
+    try:
+        return get_cipher().decrypt(encrypted_pwd.encode()).decode()
+    except:
+        return ""
+
+# --- Config Handling ---
 def load_config():
     if os.path.exists(CONFIG_FILE):
         try:
@@ -19,9 +53,7 @@ def run_commands_local(cmds):
     results =[]
     for cmd in cmds:
         try:
-            # Added stderr=subprocess.STDOUT to capture hidden error messages
             proc = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=5)
-            # If the command fails (return code is not 0), flag it as an error
             if proc.returncode != 0:
                 results.append(f"Error: {proc.stdout.strip()}")
             else:
@@ -35,18 +67,18 @@ def run_commands_remote(cmds, config):
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     results =[]
     try:
-        pwd = config.get('password')
-        if not pwd: pwd = None
+        # Decrypt the password before sending it to SSH
+        enc_pwd = config.get('password')
+        pwd = decrypt_pwd(enc_pwd) if enc_pwd else None
+        
         ssh.connect(config.get('host'), username=config.get('user'), password=pwd, timeout=10, banner_timeout=15, auth_timeout=15, look_for_keys=False)
         for cmd in cmds:
             stdin, stdout, stderr = ssh.exec_command(cmd, timeout=5)
-            # Capture both standard output and error output over SSH
             err_out = stderr.read().decode('utf-8').strip()
             std_out = stdout.read().decode('utf-8').strip()
             
             exit_status = stdout.channel.recv_exit_status()
             if exit_status != 0:
-                # If SSH command failed, combine errors so the UI sees them
                 results.append(f"Error: {err_out if err_out else std_out}")
             else:
                 results.append(std_out)
