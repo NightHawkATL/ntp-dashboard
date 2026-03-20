@@ -18,13 +18,13 @@ You can deploy the app using the following Docker Compose:
 ```
 services:
   ntp-dashboard:
-    image: nighthawkatl/ntp-dashboard:latest
+    image: nighthawkatl/ntp-dashboard:latest ## -> Change to "ghcr.io/nighthawkatl/ntp-dashboard:latest" to pull the image from GitHub
     container_name: ntp-dashboard
-    network_mode: "host" # Allows container to query host's chrony/gpsd
-    volumes:
-      - ./config.json:/app/config.json # Persists UI settings
+    network_mode: "host"
     environment:
       - DEBUG_MODE=false
+    volumes:
+      - ./data:/app/data
     restart: unless-stopped
 ```
 # Prerequisites
@@ -33,7 +33,7 @@ In order to get the most out of this app, even for the "local-only" deployment i
 # Roadmap
 These are listed in no particular order
 
-1. Hashing of password in config.json file
+1. ~~Encrypting of password in config.json file~~
 2. PWA conversion
 3. Release update notifications
 4. Compact image
