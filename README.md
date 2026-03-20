@@ -34,7 +34,7 @@ In order to get the most out of this app, even for the "local-only" deployment i
 These are listed in no particular order
 
 1. ~~Encrypting of password in config.json file~~
-2. PWA conversion
+2. ~~PWA conversion~~
 3. Release update notifications
 4. Compact image
 5. ~~Convert javascript in HTML to a script call as a separate file rather than being in the HTML~~
