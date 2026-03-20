@@ -1,0 +1,9 @@
+.git
+.github
+data/
+ssh/
+*.md
+__pycache__
+.DS_Store
+.vscode
+.idea

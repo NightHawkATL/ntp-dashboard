@@ -4,7 +4,8 @@ services:
   ntp-dashboard:
     build: .
     container_name: ntp-dashboard
-    network_mode: "host" # Allows container to query host's chrony/gpsd
+    network_mode: "host"
     volumes:
-      - /mnt/Apps/Storage/ntp-docker/templates/config.json:/app/config.json # Persists UI settings
+      - ./data:/app/data        # Persists config + encryption key
+      - ./ssh:/app/ssh:ro       # Mount SSH private key (read-only)
     restart: unless-stopped

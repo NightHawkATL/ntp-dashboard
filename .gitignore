@@ -1,4 +1,21 @@
-/.gitignore
-/README.md
-/LICENSE
-/requirements.txt
+# Runtime data — never commit
+data/
+ssh/
+
+# Config with credentials
+templates/config.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Docker build artifacts
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
