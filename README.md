@@ -8,7 +8,7 @@ The standard deployment ("out-of-the-box experience" or "OOBE") for this app is 
 
 <img width="936" height="786" alt="image" src="https://github.com/user-attachments/assets/4b32d205-9d3b-49f8-b663-019812134f35" />
 
-When connecting the app to a local NTP GPS-enabled server over SSH, you will then see the NMEA and PPS data, almong with the GPS data visualized. All you have to do is click on the "Connection Setup" button and put in the SSH credentials for your local NTP server and it will make the connection and populate the data correctly. The login credentials are stored locally in a "config.json" file that is stored whereever you set the bind mount to. The password is stored as encrypted and a separate key is used to unlock or decrypt the password for use.
+When connecting the app to a local NTP GPS-enabled server over SSH, you will then see the NMEA and PPS data, almong with the GPS data visualized. All you have to do is click on the "Connection Setup" button and put in the SSH credentials for your local NTP server and it will make the connection and populate the data correctly. The login credentials are stored locally in a "config.json" file that is stored wherever you set the bind mount to. The password is stored as encrypted and a separate key is used to unlock or decrypt the password for use.
 
 <img width="946" height="867" alt="image" src="https://github.com/user-attachments/assets/362bc486-f291-4df7-a3ab-32a3bb1183e2" />
 
