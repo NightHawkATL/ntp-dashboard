@@ -1,5 +1,5 @@
 import os, json, subprocess
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, send_from_directoryt
 import paramiko
 from cryptography.fernet import Fernet
 
@@ -87,10 +87,19 @@ def run_commands_remote(cmds, config):
     finally:
         ssh.close()
     return results
+    
 @app.route('/')
 def index(): 
     # Pass the version variable directly into the HTML file
     return render_template('index.html', app_version=APP_VERSION)
+
+@app.route('/manifest.json')
+def manifest():
+    return send_from_directory('static', 'manifest.json')
+
+@app.route('/sw.js')
+def service_worker():
+    return send_from_directory('static', 'sw.js', mimetype='application/javascript')
 
 @app.route('/api/ntp')
 def get_ntp():
