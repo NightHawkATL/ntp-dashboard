@@ -132,9 +132,23 @@ def get_gps():
 @app.route('/api/config', methods=['GET', 'POST'])
 def config_endpoint():
     if request.method == 'POST':
-        save_config(request.json)
+        new_conf = request.json
+        old_conf = load_config()
+        
+        # If UI sends a blank password, keep the old encrypted one
+        if not new_conf.get('password') and old_conf.get('password'):
+            new_conf['password'] = old_conf['password']
+        # NEW: If UI sends a new password, encrypt it!
+        elif new_conf.get('password'):
+            new_conf['password'] = encrypt_pwd(new_conf['password'])
+            
+        save_config(new_conf)
         return jsonify({"status": "success"})
-    return jsonify(load_config())
+    
+    # Send config to UI but hide password for security
+    conf = load_config()
+    conf['password'] = ""
+    return jsonify(conf)
 
 if __name__ == '__main__':
     # Check if the environment variable DEBUG_MODE is set to "true" (defaults to "false")
