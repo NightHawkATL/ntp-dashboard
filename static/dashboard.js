@@ -193,20 +193,4 @@
         fetchGPS();
         setInterval(fetchNTP, 2000);
         setInterval(fetchGPS, 30000);
-        // 8. GitHub Version Checker
-        async function fetchVersion() {
-            try {
-                // Queries GitHub's public API for your specific repo's latest release
-                const res = await fetch('https://api.github.com/repos/NightHawkATL/ntp-dashboard/releases/latest');
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data.tag_name) {
-                        document.getElementById('versionDisplay').innerText = data.tag_name;
-                    }
-                }
-            } catch (e) {
-                console.log("Could not fetch version (Offline or no releases yet). Defaulting to v0.0.1");
-            }
-        }
-        
-        fetchVersion(); // Run it once on page load
+       
