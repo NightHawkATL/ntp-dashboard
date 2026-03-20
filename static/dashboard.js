@@ -194,3 +194,11 @@
         setInterval(fetchNTP, 2000);
         setInterval(fetchGPS, 30000);
        
+        // 9. Register PWA Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('PWA Service Worker Registered!', reg.scope))
+                    .catch(err => console.error('PWA Registration Failed!', err));
+            });
+        }
