@@ -103,10 +103,11 @@
         </div>
     </div>
         
-        <!-- NEW: Version Footer -->
+<!-- Version Footer -->
         <div class="mt-8 text-center text-sm font-mono text-gray-500 dark:text-gray-400">
             <a href="https://github.com/NightHawkATL/ntp-dashboard" target="_blank" class="hover:text-blue-500 transition-colors">ntp-dashboard</a>
-            <a href="https://github.com/NightHawkATL/ntp-dashboard/releases" target="_blank" id="versionDisplay" class="ml-1 hover:text-blue-500 transition-colors">v0.0.1</a>
+            <!-- Notice we replaced the hardcoded v0.0.1 with the double curly bracket variable -->
+            <a href="https://github.com/NightHawkATL/ntp-dashboard/releases" target="_blank" class="ml-1 hover:text-blue-500 transition-colors">{{ app_version }}</a>
         </div>
 
     </div> <!-- End of main max-w-6xl container -->
