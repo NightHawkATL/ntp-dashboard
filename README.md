@@ -12,6 +12,7 @@ When connecting the app to a local NTP GPS-enabled server over SSH, you will the
 
 The NTP Sources data will refresh every 2 seconds and the Satellites data will refresh every 30 seconds. The GPS Satellite Time display will update every 30 seconds as the satellite data is updated.
 
+# Docker Deployment
 You can deploy the app using the following Docker Compose:
 ```yaml
 services:
@@ -29,6 +30,16 @@ services:
 In order to get the most out of this app, even for the "local-only" deployment in docker, you will need to install Chrony on your host. for Debian or Ubuntu users, this is as simple as `sudo apt install chrony`. There is a link in the wiki for "troubleshooting" on how to install chrony for other distros.
 
 The network mode must be set to "host" to allow direct access to the chrony service that is running on the host. If this is changed to "bridge" or anything else, it will not work as expected.
+
+# Resource Usage
+Usage is low running either the amd64 or the arm 64 image. Network is near 0% even if you are using the "remote" mode to access a local NTP server on your network.
+
+amd64:
+<img width="639" height="192" alt="image" src="https://github.com/user-attachments/assets/861fcf80-19ad-42c8-9b6c-35b8be6fe5c5" />
+
+arm64:
+<img width="637" height="190" alt="image" src="https://github.com/user-attachments/assets/77723948-5d21-48b5-95b4-1259a127a140" />
+
 
 # Roadmap
 These are listed in no particular order
