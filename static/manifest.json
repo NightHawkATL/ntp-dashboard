@@ -1,0 +1,17 @@
+{
+  "name": "NTP & GPS Dashboard",
+  "short_name": "NTP Dash",
+  "description": "Stratum-1 NTP & GPS Time Server Dashboard",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#3b82f6",
+  "icons":[
+    {
+      "src": "/static/images/logo.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
