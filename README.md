@@ -35,9 +35,11 @@ The network mode must be set to "host" to allow direct access to the chrony serv
 Usage is low running either the amd64 or the arm 64 image. Network is near 0% even if you are using the "remote" mode to access a local NTP server on your network.
 
 amd64:
+
 <img width="639" height="192" alt="image" src="https://github.com/user-attachments/assets/861fcf80-19ad-42c8-9b6c-35b8be6fe5c5" />
 
 arm64:
+
 <img width="637" height="190" alt="image" src="https://github.com/user-attachments/assets/77723948-5d21-48b5-95b4-1259a127a140" />
 
 
