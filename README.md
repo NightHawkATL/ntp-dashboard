@@ -28,6 +28,8 @@ services:
 # Prerequisites
 In order to get the most out of this app, even for the "local-only" deployment in docker, you will need to install Chrony on your host. for Debian or Ubuntu users, this is as simple as `sudo apt install chrony`. There is a link in the wiki for "troubleshooting" on how to install chrony for other distros.
 
+The network mode must be set to "host" to allow direct access to the chrony service that is running on the host. If this is changed to "bridge" or anything else, it will not work as expected.
+
 # Roadmap
 These are listed in no particular order
 
