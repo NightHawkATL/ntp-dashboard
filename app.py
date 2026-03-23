@@ -171,6 +171,47 @@ def get_gps():
     
     return jsonify({"satellites": satellites, "gps_time": gps_time})
 
+@app.route('/api/clients')
+def get_clients():
+    config = load_config()
+    
+    # Use sudo for remote SSH, but drop it for local Docker (since the container is already root)
+    if config.get("mode") == "local":
+        cmd = "chronyc -N clients -k"
+        outs = run_commands_local([cmd])
+    else:
+        cmd = "sudo chronyc -N clients -k"
+        outs = run_commands_remote([cmd], config)
+        
+    out = outs[0]
+    clients =[]
+    
+    # Check if the command ran successfully
+    if out and "Error" not in out and "command not found" not in out.lower():
+        lines = out.strip().split('\n')
+        start_idx = -1
+        # Find the line with the '========' borders
+        for i, line in enumerate(lines):
+            if set(line.strip()) == {'='}:
+                start_idx = i + 1
+                break
+        
+        # Parse the clients table
+        if start_idx != -1:
+            for line in lines[start_idx:]:
+                if not line.strip(): continue
+                parts = line.split()
+                if len(parts) >= 6:
+                    clients.append({
+                        "ip": parts[0],
+                        "ntp_hits": parts[1],
+                        "ntp_drops": parts[2],
+                        "last_seen": parts[5]
+                    })
+                    
+    err = out if ("Error" in out or "command not found" in out.lower()) else None
+    return jsonify({"clients": clients, "error": err})
+
 @app.route('/api/config', methods=['GET', 'POST'])
 def config_endpoint():
     if request.method == 'POST':
