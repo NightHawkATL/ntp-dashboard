@@ -77,37 +77,48 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () 
 
         // 3. Configuration Setup
         async function loadUI() {
-            try {
-                const res = await fetch('/api/config');
-                const conf = await res.json();
-                document.getElementById('mode').value = conf.mode || 'local';
-                document.getElementById('host').value = conf.host || '';
-                document.getElementById('user').value = conf.user || '';
-                
-                const modeText = conf.mode === 'local' ? 'Local System (Docker Host)' : `SSH Remote: ${conf.host}`;
-                document.getElementById('connMode').innerText = modeText;
-                toggleRemote();
-            } catch (e) { console.error("Config load error", e); }
-        }
+    try {
+        const res = await fetch('/api/config');
+        const conf = await res.json();
+        document.getElementById('mode').value = conf.mode || 'local';
+        document.getElementById('host').value = conf.host || '';
+        document.getElementById('user').value = conf.user || '';
+        
+        // Show asterisks if a key is saved, otherwise leave blank
+        document.getElementById('ssh_key').value = conf.ssh_key ? '********' : '';
+        
+        const modeText = conf.mode === 'local' ? 'Local System (Docker Host)' : `SSH Remote: ${conf.host}`;
+        document.getElementById('connMode').innerText = modeText;
+        toggleRemote();
+    } catch (e) { console.error("Config load error", e); }
+}
 
-        document.getElementById('configForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const payload = {
-                mode: document.getElementById('mode').value,
-                host: document.getElementById('host').value,
-                user: document.getElementById('user').value,
-                password: document.getElementById('password').value
-            };
-            await fetch('/api/config', {
-                method: 'POST', 
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(payload)
-            });
-            closeSettings(); 
-            loadUI(); 
-            fetchNTP(); 
-            fetchGPS();
-        });
+// Replace your existing configForm submit listener with this:
+document.getElementById('configForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    // If the user didn't change the hidden key, don't send the asterisks back
+    let sshKeyVal = document.getElementById('ssh_key').value;
+    if (sshKeyVal === '********') sshKeyVal = '';
+
+    const payload = {
+        mode: document.getElementById('mode').value,
+        host: document.getElementById('host').value,
+        user: document.getElementById('user').value,
+        password: document.getElementById('password').value,
+        ssh_key: sshKeyVal
+    };
+    
+    await fetch('/api/config', {
+        method: 'POST', 
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+    });
+    closeSettings(); 
+    loadUI(); 
+    fetchNTP(); 
+    fetchGPS();
+});
 
         // 4. NTP Data Polling (2 Seconds)
         async function fetchNTP() {
