@@ -218,19 +218,25 @@ def config_endpoint():
         new_conf = request.json
         old_conf = load_config()
         
-        # If UI sends a blank password, keep the old encrypted one
+        # Preserve password if left blank
         if not new_conf.get('password') and old_conf.get('password'):
             new_conf['password'] = old_conf['password']
-        # NEW: If UI sends a new password, encrypt it!
         elif new_conf.get('password'):
             new_conf['password'] = encrypt_pwd(new_conf['password'])
+            
+        # Preserve SSH key if left blank
+        if not new_conf.get('ssh_key') and old_conf.get('ssh_key'):
+            new_conf['ssh_key'] = old_conf['ssh_key']
+        elif new_conf.get('ssh_key'):
+            new_conf['ssh_key'] = encrypt_pwd(new_conf['ssh_key'])
             
         save_config(new_conf)
         return jsonify({"status": "success"})
     
-    # Send config to UI but hide password for security
+    # Send config to UI but hide secrets
     conf = load_config()
     conf['password'] = ""
+    conf['ssh_key'] = "saved" if conf.get('ssh_key') else ""
     return jsonify(conf)
 
 if __name__ == '__main__':
