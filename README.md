@@ -12,7 +12,7 @@ When connecting the app to a local NTP GPS-enabled server over SSH, you will the
 
 The NTP Sources data will refresh every 2 seconds and the Satellites data will refresh every 30 seconds. The GPS Satellite Time display will update every 30 seconds as the satellite data is updated.
 
-The new "View Clients" button will reveal a list of connected clients when running in "Remote" mode. It will allow you to track all the IP address (clients) that are currently connected and getting time from your NTP server, without having to drill into the CLI to get that information!
+The new "View Clients" button will reveal a list of connected clients when running in "Remote" mode. It will allow you to track all the IP addresses (clients) that are currently connected and getting time from your NTP server, without having to drill into the CLI to get that information!
 
 <img width="670" height="783" alt="image" src="https://github.com/user-attachments/assets/a870b1c2-ef97-4355-b312-be2144e512a6" />
 
