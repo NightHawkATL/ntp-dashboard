@@ -1,11 +1,22 @@
-FROM python:3.11-slim
-# Install tools inside container so we don't pollute the host
-RUN apt-get update && apt-get install -y chrony gpsd-clients wget && rm -rf /var/lib/apt/lists/*
+FROM python:3.11-alpine
+
 WORKDIR /app
-# Download Tailwind for offline viewing
+
+# 1. Install Alpine's lightweight packages (No Desktop GUI bloat!)
+# We also install GNU grep just to ensure compatibility with our scripts
+RUN apk add --no-cache chrony gpsd-clients grep
+
+# 2. Download Tailwind CSS locally
 RUN mkdir -p /app/static && wget -q https://cdn.tailwindcss.com/ -O /app/static/tailwindcss.js
+
+# 3. Install Python requirements
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+
+# 4. Copy the app files (.dockerignore will block the junk automatically)
 COPY . .
+
+# Match your custom port
 EXPOSE 55234
+
 CMD ["python", "app.py"]
