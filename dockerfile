@@ -19,4 +19,4 @@ COPY . .
 # Match your custom port
 EXPOSE 55234
 
-CMD["python", "app.py"]
+CMD ["python", "app.py"]
