@@ -64,11 +64,16 @@
             </div>
         </div>
 
-        <!-- NTP Sources Table -->
+<!-- NTP Sources Table -->
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow overflow-hidden mb-6 border border-gray-200 dark:border-gray-700">
-            <div class="p-4 border-b dark:border-gray-700 flex justify-between bg-gray-50 dark:bg-gray-800">
+            <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800">
                 <h2 class="font-semibold text-gray-700 dark:text-gray-300">NTP Sources (chronyc sources)</h2>
-                <span class="text-xs text-gray-500 font-mono">Updates 2s</span>
+                <div class="flex items-center gap-4">
+                    <button onclick="openClientsModal()" class="px-3 py-1 rounded text-xs font-bold bg-primary-100 text-primary-800 dark:bg-primary-900/50 dark:text-primary-200 border border-primary-200 dark:border-primary-800 hover:bg-primary-200 dark:hover:bg-primary-800 transition-colors shadow-sm">
+                        View Clients
+                    </button>
+                    <span class="text-xs text-gray-500 font-mono">Updates 2s</span>
+                </div>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-sm font-mono whitespace-nowrap">
