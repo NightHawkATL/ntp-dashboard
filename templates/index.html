@@ -170,6 +170,44 @@
         </div>
     </div>
 
+<!-- Connected Clients Modal -->
+    <div id="clientsModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50 px-4 flex backdrop-blur-sm transition-opacity">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl p-6 border border-gray-200 dark:border-gray-700 flex flex-col max-h-[85vh]">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold">Connected NTP Clients</h2>
+                <div class="flex items-center gap-2">
+                    <label class="text-sm font-medium text-gray-600 dark:text-gray-300">Sort By:</label>
+                    <select id="clientSort" onchange="renderClientsTable()" class="p-1.5 text-sm rounded-lg border dark:bg-gray-700 dark:border-gray-600 outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 dark:bg-gray-700 cursor-pointer">
+                        <option value="hits_desc">Hits (High to Low)</option>
+                        <option value="recent">Most Recent Activity</option>
+                        <option value="ip_asc">IP Address</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="overflow-y-auto flex-1 border rounded-lg dark:border-gray-700 shadow-inner">
+                <table class="w-full text-left text-sm font-mono whitespace-nowrap">
+                    <thead class="bg-gray-100 dark:bg-gray-700/80 text-gray-500 dark:text-gray-400 sticky top-0 shadow-sm">
+                        <tr>
+                            <th class="p-4">IP Address</th>
+                            <th class="p-4">NTP Hits</th>
+                            <th class="p-4">Dropped</th>
+                            <th class="p-4">Last Seen</th>
+                        </tr>
+                    </thead>
+                    <tbody id="clientsTableBody" class="divide-y dark:divide-gray-700">
+                        <tr><td colspan="4" class="p-4 text-center text-gray-500">Loading clients...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="flex justify-end gap-3 mt-5 pt-4 border-t dark:border-gray-700">
+                <button type="button" onclick="fetchClients()" class="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition">Refresh Data</button>
+                <button type="button" onclick="closeClientsModal()" class="px-4 py-2 rounded-lg bg-blue-500 text-white font-medium hover:bg-blue-600 transition shadow-md">Close</button>
+            </div>
+        </div>
+    </div>
+
     <script src="/static/dashboard.js"></script>
 </body>
 </html>
