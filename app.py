@@ -62,6 +62,10 @@ def run_commands_remote(cmds, config):
         
         # If an SSH key exists, securely write it to a temporary file for Paramiko to use
         if ssh_key_str:
+            # Prevent Paramiko crashes by ensuring the key string ends with a blank newline
+            if not ssh_key_str.endswith('\n'):
+                ssh_key_str += '\n'
+                
             fd, key_filepath = tempfile.mkstemp()
             with os.fdopen(fd, 'w') as f:
                 f.write(ssh_key_str)
