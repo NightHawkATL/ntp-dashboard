@@ -1,3 +1,25 @@
+// --- Light/Dark/System Mode Logic ---
+function setThemeMode(mode) {
+    localStorage.themeMode = mode;
+    const isDark = mode === 'dark' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    document.documentElement.classList.toggle('dark', isDark);['light', 'system', 'dark'].forEach(m => {
+        const btn = document.getElementById(`btn-${m}`);
+        if (btn) {
+            if (m === mode) {
+                btn.classList.add('bg-white', 'dark:bg-gray-700', 'shadow-sm', 'text-blue-500');
+                btn.classList.remove('text-gray-500', 'hover:text-gray-900', 'dark:hover:text-gray-100');
+            } else {
+                btn.classList.remove('bg-white', 'dark:bg-gray-700', 'shadow-sm', 'text-blue-500');
+                btn.classList.add('text-gray-500', 'hover:text-gray-900', 'dark:hover:text-gray-100');
+            }
+        }
+    });
+}
+setThemeMode(localStorage.themeMode || 'system');
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    if (localStorage.themeMode === 'system') setThemeMode('system');
+});
+
         // 1. UI Modals
         const modal = document.getElementById('settingsModal');
         function openSettings() { modal.classList.remove('hidden'); }
@@ -202,3 +224,28 @@
                     .catch(err => console.error('PWA Registration Failed!', err));
             });
         }
+
+// --- GitHub Update Checker ---
+async function checkForUpdates() {
+    try {
+        // Grab the running version that Python injected into the HTML
+        const currentVersion = document.getElementById('versionDisplay').innerText.trim();
+        
+        // Ask GitHub what the newest released tag is
+        const res = await fetch('https://api.github.com/repos/NightHawkATL/ntp-dashboard/releases/latest');
+        if (res.ok) {
+            const data = await res.json();
+            const latestVersion = data.tag_name;
+            
+            // If GitHub's newest version doesn't match the running version, show the badge!
+            if (latestVersion && latestVersion !== currentVersion) {
+                const badge = document.getElementById('updateBadge');
+                badge.innerText = `Update Available: ${latestVersion}`;
+                badge.classList.remove('hidden');
+            }
+        }
+    } catch (e) {
+        console.log("Could not check for updates (Offline).");
+    }
+}
+checkForUpdates(); // Run once when the dashboard loads
