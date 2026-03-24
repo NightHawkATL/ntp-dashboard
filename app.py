@@ -44,34 +44,31 @@ def load_config():
         try:
             with open(CONFIG_FILE, 'r') as f: return json.load(f)
         except: pass
-    return {"mode": "local", "host": "", "user": "ubuntu", "password": ""}
-
-def save_config(config):
-    with open(CONFIG_FILE, 'w') as f: json.dump(config, f)
-
-def run_commands_local(cmds):
-    results =[]
-    for cmd in cmds:
-        try:
-            proc = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=5)
-            if proc.returncode != 0:
-                results.append(f"Error: {proc.stdout.strip()}")
-            else:
-                results.append(proc.stdout)
-        except Exception as e:
-            results.append(f"Error: {str(e)}")
-    return results
+    return {"mode": "local", "host": "", "user": "ubuntu", "password": "", "ssh_key": ""}
 
 def run_commands_remote(cmds, config):
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     results =[]
+    key_filepath = None
+    
     try:
-        # Decrypt the password before sending it to SSH
+        # Decrypt password and SSH key
         enc_pwd = config.get('password')
         pwd = decrypt_pwd(enc_pwd) if enc_pwd else None
         
-        ssh.connect(config.get('host'), username=config.get('user'), password=pwd, timeout=10, banner_timeout=15, auth_timeout=15, look_for_keys=False)
+        enc_key = config.get('ssh_key')
+        ssh_key_str = decrypt_pwd(enc_key) if enc_key else None
+        
+        # If an SSH key exists, securely write it to a temporary file for Paramiko to use
+        if ssh_key_str:
+            fd, key_filepath = tempfile.mkstemp()
+            with os.fdopen(fd, 'w') as f:
+                f.write(ssh_key_str)
+        
+        # Connect using key_filename if it exists, falling back to password
+        ssh.connect(config.get('host'), username=config.get('user'), password=pwd, key_filename=key_filepath, timeout=10, banner_timeout=15, auth_timeout=15, look_for_keys=False)
+        
         for cmd in cmds:
             stdin, stdout, stderr = ssh.exec_command(cmd, timeout=5)
             err_out = stderr.read().decode('utf-8').strip()
@@ -85,6 +82,9 @@ def run_commands_remote(cmds, config):
     except Exception as e:
         return[f"Error: {str(e)}"] * len(cmds)
     finally:
+        # ALWAYS securely delete the temporary SSH key file from the disk before closing
+        if key_filepath and os.path.exists(key_filepath):
+            os.remove(key_filepath)
         ssh.close()
     return results
     
