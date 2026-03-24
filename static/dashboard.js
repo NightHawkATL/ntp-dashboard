@@ -76,7 +76,7 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () 
         setInterval(updateClocks, 40);
 
         // 3. Configuration Setup
-        async function loadUI() {
+async function loadUI() {
     try {
         const res = await fetch('/api/config');
         const conf = await res.json();
