@@ -95,29 +95,41 @@ async function loadUI() {
 
 // Replace your existing configForm submit listener with this:
 document.getElementById('configForm').addEventListener('submit', async (e) => {
+    // 1. Stop the browser from reloading the page!
     e.preventDefault();
     
-    // If the user didn't change the hidden key, don't send the asterisks back
-    let sshKeyVal = document.getElementById('ssh_key').value;
-    if (sshKeyVal === '********') sshKeyVal = '';
+    try {
+        // 2. Safely check if the SSH Key box exists in the HTML
+        const sshKeyEl = document.getElementById('ssh_key');
+        let sshKeyVal = sshKeyEl ? sshKeyEl.value : '';
+        if (sshKeyVal === '********') sshKeyVal = '';
 
-    const payload = {
-        mode: document.getElementById('mode').value,
-        host: document.getElementById('host').value,
-        user: document.getElementById('user').value,
-        password: document.getElementById('password').value,
-        ssh_key: sshKeyVal
-    };
-    
-    await fetch('/api/config', {
-        method: 'POST', 
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(payload)
-    });
-    closeSettings(); 
-    loadUI(); 
-    fetchNTP(); 
-    fetchGPS();
+        const payload = {
+            mode: document.getElementById('mode').value,
+            host: document.getElementById('host').value,
+            user: document.getElementById('user').value,
+            password: document.getElementById('password').value,
+            ssh_key: sshKeyVal
+        };
+        
+        // 3. Send to Python
+        const res = await fetch('/api/config', {
+            method: 'POST', 
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        
+        if (!res.ok) throw new Error("Server rejected the save request.");
+        
+        closeSettings(); 
+        loadUI(); 
+        fetchNTP(); 
+        fetchGPS();
+        
+    } catch (err) {
+        console.error(err);
+        alert("Configuration failed to save! Check the console for errors.");
+    }
 });
 
         // 4. NTP Data Polling (2 Seconds)
