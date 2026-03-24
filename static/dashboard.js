@@ -1,3 +1,25 @@
+// --- Light/Dark/System Mode Logic ---
+function setThemeMode(mode) {
+    localStorage.themeMode = mode;
+    const isDark = mode === 'dark' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    document.documentElement.classList.toggle('dark', isDark);['light', 'system', 'dark'].forEach(m => {
+        const btn = document.getElementById(`btn-${m}`);
+        if (btn) {
+            if (m === mode) {
+                btn.classList.add('bg-white', 'dark:bg-gray-700', 'shadow-sm', 'text-blue-500');
+                btn.classList.remove('text-gray-500', 'hover:text-gray-900', 'dark:hover:text-gray-100');
+            } else {
+                btn.classList.remove('bg-white', 'dark:bg-gray-700', 'shadow-sm', 'text-blue-500');
+                btn.classList.add('text-gray-500', 'hover:text-gray-900', 'dark:hover:text-gray-100');
+            }
+        }
+    });
+}
+setThemeMode(localStorage.themeMode || 'system');
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    if (localStorage.themeMode === 'system') setThemeMode('system');
+});
+
         // 1. UI Modals
         const modal = document.getElementById('settingsModal');
         function openSettings() { modal.classList.remove('hidden'); }
@@ -11,7 +33,7 @@
         let baseGpsTimeMs = null;
         let fetchLocalTimeMs = null;
 
-        // Helper function for Local Time
+// Helper function for Local Time
         function formatTimeWithMs(date) {
             const dateStr = date.toLocaleDateString();
             let hours = date.getHours();
@@ -180,6 +202,93 @@
             }
         }
 
+// --- NTP Clients Logic & Sorting ---
+const clientsModal = document.getElementById('clientsModal');
+let clientsData =[];
+
+function openClientsModal() { 
+    clientsModal.classList.remove('hidden'); 
+    fetchClients(); // Immediately load data when opened
+}
+
+function closeClientsModal() { 
+    clientsModal.classList.add('hidden'); 
+}
+
+async function fetchClients() {
+    const tbody = document.getElementById('clientsTableBody');
+    tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-gray-500 animate-pulse">Fetching clients...</td></tr>';
+    
+    try {
+        const res = await fetch('/api/clients');
+        const d = await res.json();
+        
+        if (d.error) {
+            tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-red-500 whitespace-pre-wrap">${d.error}</td></tr>`;
+            return;
+        }
+        
+        clientsData = d.clients ||[];
+        renderClientsTable();
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-red-500">Failed to communicate with API.</td></tr>`;
+        console.error("Clients Fetch Failed", e);
+    }
+}
+
+// Helper to convert IPs to proper integers so "10.0.0.2" comes before "10.0.0.10"
+function ipToInt(ip) {
+    return ip.split('.').reduce((acc, octet) => (acc << 8) + parseInt(octet, 10), 0) >>> 0;
+}
+
+// Helper to convert Chrony's weird time formats ("45", "2m", "10h", "10d") into raw seconds for sorting
+function parseLastSeen(val) {
+    if (!val || val === '-') return Infinity;
+    let num = parseFloat(val);
+    if (val.includes('s')) return num;
+    if (val.includes('m')) return num * 60;
+    if (val.includes('h')) return num * 3600;
+    if (val.includes('d')) return num * 86400;
+    if (val.includes('y')) return num * 31536000;
+    return num; 
+}
+
+function renderClientsTable() {
+    const tbody = document.getElementById('clientsTableBody');
+    const sortMode = document.getElementById('clientSort').value;
+    
+    if (clientsData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-gray-500">No active clients found.</td></tr>';
+        return;
+    }
+
+    // Sort the Array based on User Selection
+    let sortedData = [...clientsData];
+    sortedData.sort((a, b) => {
+        if (sortMode === 'hits_desc') {
+            return parseInt(b.ntp_hits) - parseInt(a.ntp_hits);
+        } else if (sortMode === 'ip_asc') {
+            if (a.ip.includes('.') && b.ip.includes('.')) {
+                return ipToInt(a.ip) - ipToInt(b.ip); // Standard IPv4 Sort
+            }
+            return a.ip.localeCompare(b.ip); // Fallback for IPv6 / Hostnames
+        } else if (sortMode === 'recent') {
+            return parseLastSeen(a.last_seen) - parseLastSeen(b.last_seen);
+        }
+        return 0;
+    });
+
+    // Inject the sorted data using the standard blue Tailwind classes
+    tbody.innerHTML = sortedData.map(c => `
+        <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+            <td class="p-4 font-bold text-blue-600 dark:text-blue-400">${c.ip}</td>
+            <td class="p-4">${c.ntp_hits}</td>
+            <td class="p-4">${c.ntp_drops}</td>
+            <td class="p-4">${c.last_seen}</td>
+        </tr>
+    `).join('');
+}
+
         // 6. Visual Sweep Progress Bar logic (Updates every 1s)
         setInterval(() => {
             sweepTimer--;
@@ -193,20 +302,37 @@
         fetchGPS();
         setInterval(fetchNTP, 2000);
         setInterval(fetchGPS, 30000);
-        // 8. GitHub Version Checker
-        async function fetchVersion() {
-            try {
-                // Queries GitHub's public API for your specific repo's latest release
-                const res = await fetch('https://api.github.com/repos/NightHawkATL/ntp-dashboard/releases/latest');
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data.tag_name) {
-                        document.getElementById('versionDisplay').innerText = data.tag_name;
-                    }
-                }
-            } catch (e) {
-                console.log("Could not fetch version (Offline or no releases yet). Defaulting to v0.0.1");
+       
+        // 9. Register PWA Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('PWA Service Worker Registered!', reg.scope))
+                    .catch(err => console.error('PWA Registration Failed!', err));
+            });
+        }
+
+// --- GitHub Update Checker ---
+async function checkForUpdates() {
+    try {
+        // Grab the running version that Python injected into the HTML
+        const currentVersion = document.getElementById('versionDisplay').innerText.trim();
+        
+        // Ask GitHub what the newest released tag is
+        const res = await fetch('https://api.github.com/repos/NightHawkATL/ntp-dashboard/releases/latest');
+        if (res.ok) {
+            const data = await res.json();
+            const latestVersion = data.tag_name;
+            
+            // If GitHub's newest version doesn't match the running version, show the badge!
+            if (latestVersion && latestVersion !== currentVersion) {
+                const badge = document.getElementById('updateBadge');
+                badge.innerText = `Update Available: ${latestVersion}`;
+                badge.classList.remove('hidden');
             }
         }
-        
-        fetchVersion(); // Run it once on page load
+    } catch (e) {
+        console.log("Could not check for updates (Offline).");
+    }
+}
+checkForUpdates(); // Run once when the dashboard loads
