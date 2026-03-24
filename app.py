@@ -5,19 +5,17 @@ from cryptography.fernet import Fernet
 
 app = Flask(__name__)
 
-APP_VERSION = "v0.0.91"          # <--- NEW: Hard-code your version here
+APP_VERSION = "v0.0.8"
 
-# --- NEW: Directory and File Paths ---
+# --- Directory and File Paths ---
 DATA_DIR = '/app/data'
 CONFIG_FILE = os.path.join(DATA_DIR, 'config.json')
 KEY_FILE = os.path.join(DATA_DIR, 'secret.key')
 
-# Ensure the data directory exists
 os.makedirs(DATA_DIR, exist_ok=True)
 
-# --- NEW: Encryption Logic ---
+# --- Encryption Logic ---
 def get_cipher():
-    # If a key doesn't exist, generate one and save it
     if not os.path.exists(KEY_FILE):
         key = Fernet.generate_key()
         with open(KEY_FILE, 'wb') as key_file:
@@ -46,6 +44,23 @@ def load_config():
         except: pass
     return {"mode": "local", "host": "", "user": "ubuntu", "password": "", "ssh_key": ""}
 
+def save_config(config):
+    with open(CONFIG_FILE, 'w') as f: json.dump(config, f)
+
+# --- Command Execution ---
+def run_commands_local(cmds):
+    results =[]
+    for cmd in cmds:
+        try:
+            proc = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=5)
+            if proc.returncode != 0:
+                results.append(f"Error: {proc.stdout.strip()}")
+            else:
+                results.append(proc.stdout)
+        except Exception as e:
+            results.append(f"Error: {str(e)}")
+    return results
+
 def run_commands_remote(cmds, config):
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -60,17 +75,14 @@ def run_commands_remote(cmds, config):
         enc_key = config.get('ssh_key')
         ssh_key_str = decrypt_pwd(enc_key) if enc_key else None
         
-        # If an SSH key exists, securely write it to a temporary file for Paramiko to use
+        # Write SSH key to a temp file if it exists
         if ssh_key_str:
-            # Prevent Paramiko crashes by ensuring the key string ends with a blank newline
             if not ssh_key_str.endswith('\n'):
                 ssh_key_str += '\n'
-                
             fd, key_filepath = tempfile.mkstemp()
             with os.fdopen(fd, 'w') as f:
                 f.write(ssh_key_str)
         
-        # Connect using key_filename if it exists, falling back to password
         ssh.connect(config.get('host'), username=config.get('user'), password=pwd, key_filename=key_filepath, timeout=10, banner_timeout=15, auth_timeout=15, look_for_keys=False)
         
         for cmd in cmds:
@@ -86,17 +98,12 @@ def run_commands_remote(cmds, config):
     except Exception as e:
         return[f"Error: {str(e)}"] * len(cmds)
     finally:
-        # ALWAYS securely delete the temporary SSH key file from the disk before closing
         if key_filepath and os.path.exists(key_filepath):
             os.remove(key_filepath)
         ssh.close()
     return results
-    
-@app.route('/')
-def index(): 
-    # Pass the version variable directly into the HTML file
-    return render_template('index.html', app_version=APP_VERSION)
 
+# --- PWA Routes ---
 @app.route('/manifest.json')
 def manifest():
     return send_from_directory('static', 'manifest.json')
@@ -105,12 +112,16 @@ def manifest():
 def service_worker():
     return send_from_directory('static', 'sw.js', mimetype='application/javascript')
 
+# --- API Routes ---
+@app.route('/')
+def index(): 
+    return render_template('index.html', app_version=APP_VERSION)
+
 @app.route('/api/ntp')
 def get_ntp():
     config = load_config()
-    cmds = ["chronyc tracking", "chronyc sources"]
+    cmds =["chronyc tracking", "chronyc sources"]
     
-    # Execute commands based on mode
     if config.get("mode") == "local":
         outs = run_commands_local(cmds)
     else:
@@ -121,13 +132,11 @@ def get_ntp():
     
     offset, sources = "Unknown",[]
     
-    # Parse tracking
     for line in tracking_out.split('\n'):
         if "System time" in line or "Last offset" in line:
             offset = line.split(':', 1)[-1].strip()
             break
             
-    # Parse sources
     lines = sources_out.strip().split('\n')
     start_idx = next((i + 1 for i, l in enumerate(lines) if set(l.strip()) == {'='}), -1)
     if start_idx != -1:
@@ -137,18 +146,15 @@ def get_ntp():
             if len(parts) >= 6:
                 sources.append({"state": parts[0], "name": parts[1], "stratum": parts[2], "poll": parts[3], "reach": parts[4], "lastrx": parts[5], "last_sample": " ".join(parts[6:])})
     
-    # Determine error messages
     err = tracking_out if "Error" in tracking_out else None
-    if not err and "Error" in sources_out: 
-        err = sources_out
+    if not err and "Error" in sources_out: err = sources_out
     
     return jsonify({"offset": offset, "sources": sources, "error": err})
 
 @app.route('/api/gps')
 def get_gps():
     config = load_config()
-    # Read 12 lines of raw GPS JSON output and exit immediately
-    cmd =["timeout 3 gpspipe -w -n 12"]
+    cmd = ["timeout 3 gpspipe -w -n 12"]
     
     if config.get("mode") == "local":
         gps_out = run_commands_local(cmd)[0]
@@ -157,17 +163,14 @@ def get_gps():
         
     satellites =[]
     gps_time = "Waiting for lock..."
-    
     try:
         if gps_out and "Error" not in gps_out:
             for line in gps_out.strip().split('\n'):
                 if not line: continue
                 try:
                     data = json.loads(line)
-                    # Grab Satellites
                     if data.get("class") == "SKY":
                         satellites = data.get("satellites",[])
-                    # Grab GPS Time
                     elif data.get("class") == "TPV" and "time" in data:
                         gps_time = data.get("time")
                 except: pass
@@ -179,28 +182,24 @@ def get_gps():
 def get_clients():
     config = load_config()
     
-    # Use sudo for remote SSH, but drop it for local Docker (since the container is already root)
     if config.get("mode") == "local":
-        cmd = "chronyc -N clients -k"
-        outs = run_commands_local([cmd])
+        cmd = ["chronyc -N clients -k"]
+        outs = run_commands_local(cmd)
     else:
-        cmd = "sudo chronyc -N clients -k"
-        outs = run_commands_remote([cmd], config)
+        cmd =["sudo chronyc -N clients -k"]
+        outs = run_commands_remote(cmd, config)
         
     out = outs[0]
     clients =[]
     
-    # Check if the command ran successfully
     if out and "Error" not in out and "command not found" not in out.lower():
         lines = out.strip().split('\n')
         start_idx = -1
-        # Find the line with the '========' borders
         for i, line in enumerate(lines):
             if set(line.strip()) == {'='}:
                 start_idx = i + 1
                 break
         
-        # Parse the clients table
         if start_idx != -1:
             for line in lines[start_idx:]:
                 if not line.strip(): continue
@@ -222,13 +221,11 @@ def config_endpoint():
         new_conf = request.json
         old_conf = load_config()
         
-        # Preserve password if left blank
         if not new_conf.get('password') and old_conf.get('password'):
             new_conf['password'] = old_conf['password']
         elif new_conf.get('password'):
             new_conf['password'] = encrypt_pwd(new_conf['password'])
             
-        # Preserve SSH key if left blank
         if not new_conf.get('ssh_key') and old_conf.get('ssh_key'):
             new_conf['ssh_key'] = old_conf['ssh_key']
         elif new_conf.get('ssh_key'):
@@ -237,18 +234,13 @@ def config_endpoint():
         save_config(new_conf)
         return jsonify({"status": "success"})
     
-    # Send config to UI but hide secrets
     conf = load_config()
     conf['password'] = ""
     conf['ssh_key'] = "saved" if conf.get('ssh_key') else ""
     return jsonify(conf)
 
 if __name__ == '__main__':
-    # Check if the environment variable DEBUG_MODE is set to "true" (defaults to "false")
     is_debug = os.environ.get('DEBUG_MODE', 'false').lower() == 'true'
-    
     if is_debug:
         print("⚠️ DEBUG MODE ENABLED - Detailed errors will be shown in the browser.")
-        
-    # Pass the variable into Flask's run command
     app.run(host='0.0.0.0', port=55234, debug=is_debug)
