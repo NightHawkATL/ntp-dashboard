@@ -5,7 +5,7 @@ from cryptography.fernet import Fernet
 
 app = Flask(__name__)
 
-APP_VERSION = "v0.0.9"          # <--- NEW: Hard-code your version here
+APP_VERSION = "v0.0.91"          # <--- NEW: Hard-code your version here
 
 # --- NEW: Directory and File Paths ---
 DATA_DIR = '/app/data'
