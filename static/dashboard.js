@@ -202,6 +202,93 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () 
             }
         }
 
+// --- NTP Clients Logic & Sorting ---
+const clientsModal = document.getElementById('clientsModal');
+let clientsData =[];
+
+function openClientsModal() { 
+    clientsModal.classList.remove('hidden'); 
+    fetchClients(); // Immediately load data when opened
+}
+
+function closeClientsModal() { 
+    clientsModal.classList.add('hidden'); 
+}
+
+async function fetchClients() {
+    const tbody = document.getElementById('clientsTableBody');
+    tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-gray-500 animate-pulse">Fetching clients...</td></tr>';
+    
+    try {
+        const res = await fetch('/api/clients');
+        const d = await res.json();
+        
+        if (d.error) {
+            tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-red-500 whitespace-pre-wrap">${d.error}</td></tr>`;
+            return;
+        }
+        
+        clientsData = d.clients ||[];
+        renderClientsTable();
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-red-500">Failed to communicate with API.</td></tr>`;
+        console.error("Clients Fetch Failed", e);
+    }
+}
+
+// Helper to convert IPs to proper integers so "10.0.0.2" comes before "10.0.0.10"
+function ipToInt(ip) {
+    return ip.split('.').reduce((acc, octet) => (acc << 8) + parseInt(octet, 10), 0) >>> 0;
+}
+
+// Helper to convert Chrony's weird time formats ("45", "2m", "10h", "10d") into raw seconds for sorting
+function parseLastSeen(val) {
+    if (!val || val === '-') return Infinity;
+    let num = parseFloat(val);
+    if (val.includes('s')) return num;
+    if (val.includes('m')) return num * 60;
+    if (val.includes('h')) return num * 3600;
+    if (val.includes('d')) return num * 86400;
+    if (val.includes('y')) return num * 31536000;
+    return num; 
+}
+
+function renderClientsTable() {
+    const tbody = document.getElementById('clientsTableBody');
+    const sortMode = document.getElementById('clientSort').value;
+    
+    if (clientsData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-gray-500">No active clients found.</td></tr>';
+        return;
+    }
+
+    // Sort the Array based on User Selection
+    let sortedData = [...clientsData];
+    sortedData.sort((a, b) => {
+        if (sortMode === 'hits_desc') {
+            return parseInt(b.ntp_hits) - parseInt(a.ntp_hits);
+        } else if (sortMode === 'ip_asc') {
+            if (a.ip.includes('.') && b.ip.includes('.')) {
+                return ipToInt(a.ip) - ipToInt(b.ip); // Standard IPv4 Sort
+            }
+            return a.ip.localeCompare(b.ip); // Fallback for IPv6 / Hostnames
+        } else if (sortMode === 'recent') {
+            return parseLastSeen(a.last_seen) - parseLastSeen(b.last_seen);
+        }
+        return 0;
+    });
+
+    // Inject the sorted data using the standard blue Tailwind classes
+    tbody.innerHTML = sortedData.map(c => `
+        <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+            <td class="p-4 font-bold text-blue-600 dark:text-blue-400">${c.ip}</td>
+            <td class="p-4">${c.ntp_hits}</td>
+            <td class="p-4">${c.ntp_drops}</td>
+            <td class="p-4">${c.last_seen}</td>
+        </tr>
+    `).join('');
+}
+
         // 6. Visual Sweep Progress Bar logic (Updates every 1s)
         setInterval(() => {
             sweepTimer--;
