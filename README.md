@@ -4,7 +4,7 @@ When I first built my NTP-PPS server, I followed this blog on how to do it: http
 
 The initial deployment for this app is to pull the sources data from Chrony on your docker host and show the servers that it is using. It will display the current system time and time offset from NTP. This is similar to an "NTP Client" that just pulls the time based on how the Docker host is setup for time resolution.
 
-<img width="936" height="786" alt="image" src="https://github.com/user-attachments/assets/4b32d205-9d3b-49f8-b663-019812134f35" />
+<img width="1060" height="900" alt="image" src="https://github.com/user-attachments/assets/9c0103c1-5263-481e-88e8-e87d0d46b90d" />
 
 When connecting the app to a local NTP GPS-enabled server over SSH, you will then see the NMEA and PPS data, almong with the GPS data visualized. All you have to do is click on the "Connection Setup" button and put in the SSH credentials for your local NTP server and it will make the connection and populate the data correctly. The login credentials are stored locally in a "config.json" file that is stored wherever you set the bind mount to. The password is stored as encrypted and a separate key is used to unlock or decrypt the password for use.
 
