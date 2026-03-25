@@ -6,10 +6,10 @@ function setThemeMode(mode) {
         const btn = document.getElementById(`btn-${m}`);
         if (btn) {
             if (m === mode) {
-                btn.classList.add('bg-white', 'dark:bg-gray-700', 'shadow-sm', 'text-blue-500');
+                btn.classList.add('bg-white', 'dark:bg-gray-700', 'shadow-sm', 'text-primary-500');
                 btn.classList.remove('text-gray-500', 'hover:text-gray-900', 'dark:hover:text-gray-100');
             } else {
-                btn.classList.remove('bg-white', 'dark:bg-gray-700', 'shadow-sm', 'text-blue-500');
+                btn.classList.remove('bg-white', 'dark:bg-gray-700', 'shadow-sm', 'text-primary-500');
                 btn.classList.add('text-gray-500', 'hover:text-gray-900', 'dark:hover:text-gray-100');
             }
         }
@@ -76,38 +76,61 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () 
         setInterval(updateClocks, 40);
 
         // 3. Configuration Setup
-        async function loadUI() {
-            try {
-                const res = await fetch('/api/config');
-                const conf = await res.json();
-                document.getElementById('mode').value = conf.mode || 'local';
-                document.getElementById('host').value = conf.host || '';
-                document.getElementById('user').value = conf.user || '';
-                
-                const modeText = conf.mode === 'local' ? 'Local System (Docker Host)' : `SSH Remote: ${conf.host}`;
-                document.getElementById('connMode').innerText = modeText;
-                toggleRemote();
-            } catch (e) { console.error("Config load error", e); }
-        }
+async function loadUI() {
+    try {
+        const res = await fetch('/api/config');
+        const conf = await res.json();
+        document.getElementById('mode').value = conf.mode || 'local';
+        document.getElementById('host').value = conf.host || '';
+        document.getElementById('user').value = conf.user || '';
+        
+        // Show asterisks if a key is saved, otherwise leave blank
+        document.getElementById('ssh_key').value = conf.ssh_key ? '********' : '';
+        
+        const modeText = conf.mode === 'local' ? 'Local System (Docker Host)' : `SSH Remote: ${conf.host}`;
+        document.getElementById('connMode').innerText = modeText;
+        toggleRemote();
+    } catch (e) { console.error("Config load error", e); }
+}
 
-        document.getElementById('configForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const payload = {
-                mode: document.getElementById('mode').value,
-                host: document.getElementById('host').value,
-                user: document.getElementById('user').value,
-                password: document.getElementById('password').value
-            };
-            await fetch('/api/config', {
-                method: 'POST', 
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(payload)
-            });
-            closeSettings(); 
-            loadUI(); 
-            fetchNTP(); 
-            fetchGPS();
+// Replace your existing configForm submit listener with this:
+document.getElementById('configForm').addEventListener('submit', async (e) => {
+    // 1. Stop the browser from reloading the page!
+    e.preventDefault();
+    
+    try {
+        // 2. Safely check if the SSH Key box exists in the HTML
+        const sshKeyEl = document.getElementById('ssh_key');
+        let sshKeyVal = sshKeyEl ? sshKeyEl.value : '';
+        if (sshKeyVal === '********') sshKeyVal = '';
+
+        const payload = {
+            mode: document.getElementById('mode').value,
+            host: document.getElementById('host').value,
+            user: document.getElementById('user').value,
+            password: document.getElementById('password').value,
+            ssh_key: sshKeyVal
+        };
+        
+        // 3. Send to Python
+        const res = await fetch('/api/config', {
+            method: 'POST', 
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
         });
+        
+        if (!res.ok) throw new Error("Server rejected the save request.");
+        
+        closeSettings(); 
+        loadUI(); 
+        fetchNTP(); 
+        fetchGPS();
+        
+    } catch (err) {
+        console.error(err);
+        alert("Configuration failed to save! Check the console for errors.");
+    }
+});
 
         // 4. NTP Data Polling (2 Seconds)
         async function fetchNTP() {
@@ -128,7 +151,7 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () 
                 
                 document.getElementById('ntpTableBody').innerHTML = (d.sources ||[]).map(s => {
                     const isFocus = s.name.includes('PPS') || s.name.includes('GPS') || s.state.includes('*');
-                    const rowCls = isFocus ? 'text-blue-600 dark:text-blue-400 font-bold bg-blue-50/10 dark:bg-blue-900/10' : '';
+                    const rowCls = isFocus ? 'text-primary-600 dark:text-primary-400 font-bold bg-primary-50/10 dark:bg-primary-900/10' : '';
                     return `<tr class="${rowCls} border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                         <td class="p-4">${s.state}</td><td class="p-4">${s.name}</td>
                         <td class="p-4">${s.stratum}</td><td class="p-4">${s.poll}</td>
@@ -278,10 +301,10 @@ function renderClientsTable() {
         return 0;
     });
 
-    // Inject the sorted data using the standard blue Tailwind classes
+    // Inject the sorted data using the standard primary Tailwind classes
     tbody.innerHTML = sortedData.map(c => `
         <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-            <td class="p-4 font-bold text-blue-600 dark:text-blue-400">${c.ip}</td>
+            <td class="p-4 font-bold text-primary-600 dark:text-primary-400">${c.ip}</td>
             <td class="p-4">${c.ntp_hits}</td>
             <td class="p-4">${c.ntp_drops}</td>
             <td class="p-4">${c.last_seen}</td>
@@ -311,6 +334,74 @@ function renderClientsTable() {
                     .catch(err => console.error('PWA Registration Failed!', err));
             });
         }
+
+// --- 10. Theme Dropdown Logic ---
+const themesList =[
+    { id: 'blue', name: 'Default Blue', color: '#3b82f6' },
+    { id: 'emerald', name: 'Emerald Green', color: '#10b981' },
+    { id: 'rose', name: 'Rose Red', color: '#f43f5e' },
+    { id: 'orange', name: 'Sunset Orange', color: '#f97316' },
+    { id: 'amber', name: 'Amber Yellow', color: '#f59e0b' },
+    { id: 'violet', name: 'Violet Purple', color: '#8b5cf6' },
+    { id: 'midnight', name: 'Midnight Black', color: '#64748b' },
+    { id: 'cyan', name: 'Cyan', color: '#06b6d4' },
+    { id: 'fuchsia', name: 'Fuchsia', color: '#d946ef' },
+    { id: 'lime', name: 'Lime', color: '#84cc16' },
+    { id: 'indigo', name: 'Indigo', color: '#6366f1' },
+    { id: 'teal', name: 'Teal', color: '#14b8a6' }
+];
+
+function renderThemeMenu() {
+    const menu = document.getElementById('themeMenu');
+    const currentTheme = localStorage.themeColor || 'blue';
+    
+    // Build the dropdown list (matches the screenshot style)
+    menu.innerHTML = themesList.map(t => {
+        const isSelected = t.id === currentTheme;
+        return `
+        <button onclick="applyColorPalette('${t.id}')" class="w-full text-left px-4 py-2.5 flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ${isSelected ? 'bg-gray-50 dark:bg-gray-800/50' : ''}">
+            <span class="w-3 h-3 rounded-full" style="background-color: ${t.color}"></span>
+            <span class="flex-1 text-gray-700 dark:text-gray-200">${t.name}</span>
+            ${isSelected ? '<svg class="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>' : ''}
+        </button>
+        `;
+    }).join('');
+}
+
+function toggleThemeMenu(event) {
+    if(event) event.stopPropagation();
+    const menu = document.getElementById('themeMenu');
+    menu.classList.toggle('hidden');
+    if(!menu.classList.contains('hidden')) {
+        renderThemeMenu();
+    }
+}
+
+// Close the dropdown when clicking anywhere else on the screen
+document.addEventListener('click', (event) => {
+    const wrapper = document.getElementById('themeDropdownWrapper');
+    const menu = document.getElementById('themeMenu');
+    if (wrapper && !wrapper.contains(event.target)) {
+        menu.classList.add('hidden');
+    }
+});
+
+function applyColorPalette(colorId) {
+    localStorage.themeColor = colorId;
+    document.documentElement.setAttribute('data-theme', colorId);
+    
+    // Update the PWA theme-color meta tag instantly
+    const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+    const activeTheme = themesList.find(t => t.id === colorId);
+    if (themeColorMeta && activeTheme) {
+        themeColorMeta.setAttribute("content", activeTheme.color);
+    }
+    
+    renderThemeMenu(); // Re-render to move the checkmark
+}
+
+// Initialize on page load
+applyColorPalette(localStorage.themeColor || 'blue');
 
 // --- GitHub Update Checker ---
 async function checkForUpdates() {
