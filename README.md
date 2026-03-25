@@ -4,17 +4,17 @@ When I first built my NTP-PPS server, I followed this blog on how to do it: http
 
 The initial deployment for this app is to pull the sources data from Chrony on your docker host and show the servers that it is using. It will display the current system time and time offset from NTP. This is similar to an "NTP Client" that just pulls the time based on how the Docker host is setup for time resolution.
 
-<img width="1060" height="900" alt="image" src="https://github.com/user-attachments/assets/9c0103c1-5263-481e-88e8-e87d0d46b90d" />
+<img size="25%" alt="image" src="https://github.com/user-attachments/assets/9c0103c1-5263-481e-88e8-e87d0d46b90d" />
 
 When connecting the app to a local NTP GPS-enabled server over SSH, you will then see the NMEA and PPS data, almong with the GPS data visualized. All you have to do is click on the "Connection Setup" button and put in the SSH credentials for your local NTP server and it will make the connection and populate the data correctly. The login credentials are stored locally in a "config.json" file that is stored wherever you set the bind mount to. The password is stored as encrypted and a separate key is used to unlock or decrypt the password for use.
 
-<img width="981" height="933" alt="image" src="https://github.com/user-attachments/assets/b8581948-d6a0-4fe3-b154-085af3ea9371" />
+<img size="25%" alt="image" src="https://github.com/user-attachments/assets/b8581948-d6a0-4fe3-b154-085af3ea9371" />
 
 The NTP Sources data will refresh every 2 seconds and the Satellites data will refresh every 30 seconds. The GPS Satellite Time display will update every 30 seconds as the satellite data is updated.
 
 The new "View Clients" button will reveal a list of connected clients when running in "Remote" mode. It will allow you to track all the IP addresses (clients) that are currently connected and getting time from your NTP server, without having to drill into the CLI to get that information!
 
-<img width="670" height="783" alt="image" src="https://github.com/user-attachments/assets/a870b1c2-ef97-4355-b312-be2144e512a6" />
+<img size="25%" alt="image" src="https://github.com/user-attachments/assets/a870b1c2-ef97-4355-b312-be2144e512a6" />
 
 # Docker Deployment
 You can deploy the app using the following Docker Compose:
@@ -40,11 +40,11 @@ Usage is low running either the amd64 or the arm 64 image. Network is near 0% ev
 
 amd64:
 
-<img width="639" height="192" alt="image" src="https://github.com/user-attachments/assets/861fcf80-19ad-42c8-9b6c-35b8be6fe5c5" />
+<img size="25%" alt="image" src="https://github.com/user-attachments/assets/861fcf80-19ad-42c8-9b6c-35b8be6fe5c5" />
 
 arm64:
 
-<img width="637" height="190" alt="image" src="https://github.com/user-attachments/assets/77723948-5d21-48b5-95b4-1259a127a140" />
+<img size="25%" alt="image" src="https://github.com/user-attachments/assets/77723948-5d21-48b5-95b4-1259a127a140" />
 
 
 # Roadmap
@@ -55,7 +55,7 @@ These are listed in no particular order
 3. ~~Release update notifications~~
 4. ~~Compact image~~
 5. ~~Convert javascript in HTML to a script call as a separate file rather than being in the HTML~~
-6. Color picker to choose your favorite color for the background in light or dark mode
+6. ~~Color picker to choose your favorite color in light or dark mode~~
 
 # Troublehooting
 
