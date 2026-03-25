@@ -4,17 +4,110 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NTP Dashboard</title>
+    
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#3b82f6">
-    <link rel="apple-touch-icon" href="/static/images/ntp-dashboard-logo.png">
+    <link rel="apple-touch-icon" href="/static/images/logo.png">
+
     <script src="/static/tailwindcss.js"></script>
-    <script>tailwind.config = { darkMode: 'class' }</script>
+    <script>
+        tailwind.config = { 
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: 'rgb(var(--primary-50) / <alpha-value>)',
+                            100: 'rgb(var(--primary-100) / <alpha-value>)',
+                            200: 'rgb(var(--primary-200) / <alpha-value>)',
+                            400: 'rgb(var(--primary-400) / <alpha-value>)',
+                            500: 'rgb(var(--primary-500) / <alpha-value>)',
+                            600: 'rgb(var(--primary-600) / <alpha-value>)',
+                            800: 'rgb(var(--primary-800) / <alpha-value>)',
+                            900: 'rgb(var(--primary-900) / <alpha-value>)'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     <style>
+        /* 1. Default Blue */
+        :root {
+            --primary-50: 239 246 255; --primary-100: 219 234 254; --primary-200: 191 219 254;
+            --primary-400: 96 165 250; --primary-500: 59 130 246; --primary-600: 37 99 235;
+            --primary-800: 30 64 175; --primary-900: 30 58 138;
+        }
+        /* 2. Emerald Green */
+        [data-theme="emerald"] {
+            --primary-50: 236 253 245; --primary-100: 209 250 229; --primary-200: 167 243 208;
+            --primary-400: 52 211 153; --primary-500: 16 185 129; --primary-600: 5 150 105;
+            --primary-800: 6 95 70; --primary-900: 6 78 59;
+        }
+        /* 3. Rose Red */
+        [data-theme="rose"] {
+            --primary-50: 255 241 242; --primary-100: 255 228 230; --primary-200: 254 205 211;
+            --primary-400: 251 113 133; --primary-500: 244 63 94; --primary-600: 225 29 72;
+            --primary-800: 159 18 57; --primary-900: 136 19 55;
+        }
+        /* 4. Sunset Orange */
+        [data-theme="orange"] {
+            --primary-50: 255 237 213; --primary-100: 255 237 213; --primary-200: 253 186 116;
+            --primary-400: 251 146 60; --primary-500: 249 115 22; --primary-600: 234 88 12;
+            --primary-800: 154 52 18; --primary-900: 124 45 18;
+        }
+        /* 5. Amber Yellow */
+        [data-theme="amber"] {
+            --primary-50: 255 251 235; --primary-100: 254 243 199; --primary-200: 253 230 138;
+            --primary-400: 251 191 36; --primary-500: 245 158 11; --primary-600: 217 119 6;
+            --primary-800: 146 64 14; --primary-900: 120 53 15;
+        }
+        /* 6. Violet Purple */[data-theme="violet"] {
+            --primary-50: 245 243 255; --primary-100: 237 233 254; --primary-200: 221 214 254;
+            --primary-400: 167 139 250; --primary-500: 139 92 246; --primary-600: 124 58 237;
+            --primary-800: 91 33 182; --primary-900: 76 29 149;
+        }
+        /* 7. Midnight Black (Slate) */
+        [data-theme="midnight"] {
+            --primary-50: 248 250 252; --primary-100: 241 245 249; --primary-200: 226 232 240;
+            --primary-400: 148 163 184; --primary-500: 100 116 139; --primary-600: 71 85 105;
+            --primary-800: 30 41 59; --primary-900: 15 23 42;
+        }
+        /* 8. Cyan */
+        [data-theme="cyan"] {
+            --primary-50: 236 254 255; --primary-100: 207 250 254; --primary-200: 165 243 252;
+            --primary-400: 34 211 238; --primary-500: 6 182 212; --primary-600: 8 145 178;
+            --primary-800: 21 94 117; --primary-900: 22 78 99;
+        }
+        /* 9. Fuchsia */
+        [data-theme="fuchsia"] {
+            --primary-50: 253 244 255; --primary-100: 250 232 255; --primary-200: 245 208 254;
+            --primary-400: 232 121 249; --primary-500: 217 70 239; --primary-600: 192 38 211;
+            --primary-800: 134 25 143; --primary-900: 112 26 117;
+        }
+        /* 10. Lime */
+        [data-theme="lime"] {
+            --primary-50: 247 254 231; --primary-100: 236 252 203; --primary-200: 217 249 157;
+            --primary-400: 163 230 53; --primary-500: 132 204 22; --primary-600: 101 163 13;
+            --primary-800: 63 98 18; --primary-900: 54 83 20;
+        }
+        /* 11. Indigo */
+        [data-theme="indigo"] {
+            --primary-50: 238 242 255; --primary-100: 224 231 255; --primary-200: 199 210 254;
+            --primary-400: 129 140 248; --primary-500: 99 102 241; --primary-600: 79 70 229;
+            --primary-800: 55 48 163; --primary-900: 49 46 129;
+        }
+        /* 12. Teal */[data-theme="teal"] {
+            --primary-50: 240 253 250; --primary-100: 204 251 241; --primary-200: 153 246 228;
+            --primary-400: 45 212 191; --primary-500: 20 184 166; --primary-600: 13 148 136;
+            --primary-800: 17 94 89; --primary-900: 19 78 74;
+        }
+
         @keyframes ping-slow { 0% {transform: scale(1); opacity: 0.8;} 50% {transform: scale(2.5); opacity: 0;} 100% {transform: scale(1); opacity: 0;} }
         .ping-slow { animation: ping-slow 2s cubic-bezier(0,0,0.2,1) infinite; transform-origin: center; }
     </style>
 </head>
-<body class="bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-gray-100 min-h-screen pb-10 transition-colors">
+<body class="bg-primary-100 text-gray-900 dark:bg-primary-900 dark:text-gray-100 min-h-screen pb-10 transition-colors">
     <div class="container mx-auto px-4 py-8 max-w-6xl">
         
 <!-- Header & Local Time -->
@@ -22,13 +115,13 @@
             
             <!-- LEFT SIDE: Logo & Titles -->
             <div class="flex items-center gap-5">
-                <img src="/static/images/ntp-dashboard-logo.png" alt="NTP Server Logo" class="w-20 h-20 md:w-24 md:h-24 object-contain rounded-full shadow-[0_0_15px_rgba(59,130,246,0.3)] border border-blue-500/30 bg-[#0f172a] p-1">
+                <img src="/static/images/ntp-dashboard-logo.png" alt="NTP Server Logo" class="w-20 h-20 md:w-24 md:h-24 object-contain rounded-full shadow-[0_0_15px_rgba(59,130,246,0.3)] border border-blue-500/30 bg-primary172a] p-1">
                 
                 <div>
-                    <h1 class="text-3xl font-bold text-blue-500">NTP Dashboard</h1>
+                    <h1 class="text-3xl font-bold text-primary-500">NTP Dashboard</h1>
                     <div class="text-sm text-gray-500 dark:text-gray-400 mt-2 font-mono flex flex-col gap-1">
                         <div>Local Display Time: <span id="localTimeDisplay" class="font-bold text-gray-700 dark:text-gray-200"></span></div>
-                        <div>GPS Satellite Time: <span id="gpsTimeDisplay" class="font-bold text-blue-500">Waiting for sync...</span></div>
+                        <div>GPS Satellite Time: <span id="gpsTimeDisplay" class="font-bold text-primary-500">Waiting for sync...</span></div>
                     </div>
                 </div>
             </div>
@@ -36,7 +129,7 @@
             <!-- RIGHT SIDE: Controls -->
             <div class="flex flex-col items-end gap-3">
                 <!-- Light/System/Dark Icons -->
-                <div class="flex items-center bg-gray-200 dark:bg-gray-800 p-1 rounded-lg border border-gray-300 dark:border-gray-700">
+                <div class="flex items-center bg-primary-200 dark:bg-primary-800 p-1 rounded-lg border border-gray-300 dark:border-gray-700">
                     <button id="btn-light" onclick="setThemeMode('light')" class="p-1.5 rounded-md transition-all duration-200 text-gray-500 hover:text-gray-900 dark:hover:text-gray-100" title="Light Mode">
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
                     </button>
@@ -47,30 +140,46 @@
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
                     </button>
                 </div>
-                <!-- Connection Setup Button -->
-                <button onclick="openSettings()" class="px-4 py-2 rounded-lg bg-blue-500 text-white font-medium shadow-lg shadow-blue-500/30 hover:bg-blue-600 transition">Connection Setup</button>
+                
+                <!-- Action Buttons -->
+                <div class="flex items-center gap-3">
+                    
+                    <!-- THEME DROPDOWN MENU -->
+                    <div class="relative" id="themeDropdownWrapper">
+                        <button onclick="toggleThemeMenu(event)" class="px-4 py-2 rounded-lg bg-primary-200 dark:bg-primary-800 font-medium hover:bg-primary-300 dark:hover:bg-primary-700 transition flex items-center gap-2">
+                            Themes
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                        
+                        <!-- The Dropdown List (Hidden by Default) -->
+                        <div id="themeMenu" class="hidden absolute right-0 top-full mt-2 w-56 max-h-96 overflow-y-auto rounded-xl shadow-2xl bg-primarye dark:bg-primary2330] border border-gray-200 dark:border-gray-700 py-2 z-50 text-sm font-medium">
+                            <!-- Populated dynamically by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Connection Setup Button -->
+                    <button onclick="openSettings()" class="px-4 py-2 rounded-lg bg-primaryary-500 text-white font-medium shadow-lg shadow-primary-500/30 hover:bg-primaryary-600 transition">Connection Setup</button>
+                </div>
             </div>
-            
-        </div>
         
         <!-- Metric Cards -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6 border border-gray-200 dark:border-gray-700">
+            <div class="bg-primarye dark:bg-primary-800 rounded-xl shadow p-6 border border-gray-200 dark:border-gray-700">
                 <h2 class="text-xl font-semibold mb-2 text-gray-600 dark:text-gray-300">System Time Offset</h2>
                 <div class="text-xl font-mono font-bold" id="sysOffset">Loading...</div>
             </div>
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6 border border-gray-200 dark:border-gray-700">
+            <div class="bg-primarye dark:bg-primary-800 rounded-xl shadow p-6 border border-gray-200 dark:border-gray-700">
                 <h2 class="text-xl font-semibold mb-2 text-gray-600 dark:text-gray-300">Connection Target</h2>
-                <div class="text-lg font-medium text-blue-500" id="connMode">Loading...</div>
+                <div class="text-lg font-medium text-primary-500" id="connMode">Loading...</div>
             </div>
         </div>
 
 <!-- NTP Sources Table -->
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow overflow-hidden mb-6 border border-gray-200 dark:border-gray-700">
-            <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800">
+        <div class="bg-primarye dark:bg-primary-800 rounded-xl shadow overflow-hidden mb-6 border border-gray-200 dark:border-gray-700">
+            <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center bg-primary-50 dark:bg-primary-800">
                 <h2 class="font-semibold text-gray-700 dark:text-gray-300">NTP Sources (chronyc sources)</h2>
                 <div class="flex items-center gap-4">
-                    <button onclick="openClientsModal()" class="px-3 py-1 rounded text-xs font-bold bg-primary-100 text-primary-800 dark:bg-primary-900/50 dark:text-primary-200 border border-primary-200 dark:border-primary-800 hover:bg-primary-200 dark:hover:bg-primary-800 transition-colors shadow-sm">
+                    <button onclick="openClientsModal()" class="px-3 py-1 rounded text-xs font-bold bg-primaryary-100 text-primary-800 dark:bg-primaryary-900/50 dark:text-primary-200 border border-primary-200 dark:border-primary-800 hover:bg-primaryary-200 dark:hover:bg-primaryary-800 transition-colors shadow-sm">
                         View Clients
                     </button>
                     <span class="text-xs text-gray-500 font-mono">Updates 2s</span>
@@ -78,7 +187,7 @@
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-sm font-mono whitespace-nowrap">
-                    <thead class="bg-gray-100 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400">
+                    <thead class="bg-primary-100 dark:bg-primary-700/50 text-gray-500 dark:text-gray-400">
                         <tr><th class="p-4">State</th><th class="p-4">Source</th><th class="p-4">Stratum</th><th class="p-4">Poll</th><th class="p-4">Reach</th><th class="p-4">LastRx</th><th class="p-4">Offset</th></tr>
                     </thead>
                     <tbody id="ntpTableBody" class="divide-y dark:divide-gray-700"></tbody>
@@ -87,13 +196,13 @@
         </div>
 
         <!-- GPS Data -->
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow overflow-hidden flex flex-col lg:flex-row border border-gray-200 dark:border-gray-700">
+        <div class="bg-primarye dark:bg-primary-800 rounded-xl shadow overflow-hidden flex flex-col lg:flex-row border border-gray-200 dark:border-gray-700">
             
             <!-- Skyplot -->
-            <div class="p-6 bg-[#0a0f1a] flex flex-col items-center justify-center relative w-full lg:w-1/3 border-b lg:border-b-0 lg:border-r dark:border-gray-700">
+            <div class="p-6 bg-primary0f1a] flex flex-col items-center justify-center relative w-full lg:w-1/3 border-b lg:border-b-0 lg:border-r dark:border-gray-700">
                 <h2 class="text-white font-semibold mb-2 text-center w-full">GPS Skyplot</h2>
-                <div class="w-full h-1 bg-gray-800 mb-6 rounded overflow-hidden">
-                    <div id="sweepBar" class="h-full bg-blue-500 transition-all duration-1000 linear" style="width:100%"></div>
+                <div class="w-full h-1 bg-primary-800 mb-6 rounded overflow-hidden">
+                    <div id="sweepBar" class="h-full bg-primary-500 transition-all duration-1000 linear" style="width:100%"></div>
                 </div>
                 <div class="relative w-64 h-64">
                     <svg viewBox="0 0 200 200" class="w-full h-full rounded-full shadow-[0_0_30px_rgba(59,130,246,0.2)]">
@@ -110,12 +219,12 @@
             
             <!-- GPS Table -->
             <div class="flex-1 overflow-x-auto h-[350px] overflow-y-auto">
-                <div class="p-4 border-b dark:border-gray-700 flex justify-between bg-gray-50 dark:bg-gray-800 sticky top-0 z-10 shadow-sm">
+                <div class="p-4 border-b dark:border-gray-700 flex justify-between bg-primary-50 dark:bg-primary-800 sticky top-0 z-10 shadow-sm">
                     <span class="font-semibold text-gray-700 dark:text-gray-300">Satellites (gpspipe)</span>
-                    <span class="px-3 py-1 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 font-bold text-sm" id="satCount">0 Locked</span>
+                    <span class="px-3 py-1 rounded-full bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200 font-bold text-sm" id="satCount">0 Locked</span>
                 </div>
                 <table class="w-full text-left text-sm font-mono whitespace-nowrap">
-                    <thead class="bg-gray-100 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400">
+                    <thead class="bg-primary-100 dark:bg-primary-700/50 text-gray-500 dark:text-gray-400">
                         <tr><th class="p-4">PRN</th><th class="p-4">Elev</th><th class="p-4">Azim</th><th class="p-4">SNR</th><th class="p-4">Status</th></tr>
                     </thead>
                     <tbody id="satTableBody" class="divide-y dark:divide-gray-700"></tbody>
@@ -126,11 +235,11 @@
         
         <!-- Version Footer & Update Notification -->
         <div class="mt-8 flex justify-center items-center text-sm font-mono text-gray-500 dark:text-gray-400">
-            <a href="https://github.com/NightHawkATL/ntp-dashboard" target="_blank" class="hover:text-blue-500 transition-colors">ntp-dashboard</a>
-            <a href="https://github.com/NightHawkATL/ntp-dashboard/releases" target="_blank" id="versionDisplay" class="ml-2 hover:text-blue-500 transition-colors">{{ app_version }}</a>
+            <a href="https://github.com/NightHawkATL/ntp-dashboard" target="_blank" class="hover:text-primary-500 transition-colors">ntp-dashboard</a>
+            <a href="https://github.com/NightHawkATL/ntp-dashboard/releases" target="_blank" id="versionDisplay" class="ml-2 hover:text-primary-500 transition-colors">{{ app_version }}</a>
             
             <!-- Hidden by default, unhidden by JS if an update exists -->
-            <a href="https://github.com/NightHawkATL/ntp-dashboard/releases/latest" target="_blank" id="updateBadge" class="hidden ml-3 px-2 py-0.5 rounded text-xs font-bold bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-400 border border-green-200 dark:border-green-800 animate-pulse hover:bg-green-200 dark:hover:bg-green-900 transition-colors">
+            <a href="https://github.com/NightHawkATL/ntp-dashboard/releases/latest" target="_blank" id="updateBadge" class="hidden ml-3 px-2 py-0.5 rounded text-xs font-bold bg-primaryn-100 text-green-800 dark:bg-primaryn-900/50 dark:text-green-400 border border-green-200 dark:border-green-800 animate-pulse hover:bg-primaryn-200 dark:hover:bg-primaryn-900 transition-colors">
                 New Update: vX.X.X
             </a>
         </div>
@@ -138,12 +247,12 @@
     </div> <!-- End of main max-w-6xl container -->
 
     <!-- Settings Modal -->
-    <div id="settingsModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50 px-4 flex backdrop-blur-sm transition-opacity">
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md p-6 border border-gray-200 dark:border-gray-700">
+    <div id="settingsModal" class="fixed inset-0 bg-primaryk/60 hidden items-center justify-center z-50 px-4 flex backdrop-blur-sm transition-opacity">
+        <div class="bg-primarye dark:bg-primary-800 rounded-xl shadow-2xl w-full max-w-md p-6 border border-gray-200 dark:border-gray-700">
             <h2 class="text-2xl font-bold mb-4">Configuration</h2>
             <form id="configForm">
                 <label class="block text-sm font-medium mb-1">Target Mode</label>
-                <select id="mode" class="w-full mb-4 p-2.5 rounded-lg border dark:bg-gray-700 dark:border-gray-600 outline-none focus:ring-2 focus:ring-blue-500" onchange="toggleRemote()">
+                <select id="mode" class="w-full mb-4 p-2.5 rounded-lg border dark:bg-primary-700 dark:border-gray-600 outline-none focus:ring-2 focus:ring-blue-500" onchange="toggleRemote()">
                     <option value="local">Local (On this Server)</option>
                     <option value="remote">Remote (Another Server)</option>
                 </select>
@@ -151,38 +260,38 @@
                 <div id="remoteFields" class="hidden space-y-4 mb-6">
                     <div>
                         <label class="block text-sm font-medium mb-1">Server IP</label>
-                        <input type="text" id="host" class="w-full p-2.5 rounded-lg border dark:bg-gray-700 dark:border-gray-600 outline-none focus:ring-2 focus:ring-blue-500" placeholder="192.168.1.10">
+                        <input type="text" id="host" class="w-full p-2.5 rounded-lg border dark:bg-primary-700 dark:border-gray-600 outline-none focus:ring-2 focus:ring-blue-500" placeholder="192.168.1.10">
                     </div>
                     <div>
                         <label class="block text-sm font-medium mb-1">SSH Username</label>
-                        <input type="text" id="user" class="w-full p-2.5 rounded-lg border dark:bg-gray-700 dark:border-gray-600 outline-none focus:ring-2 focus:ring-blue-500" placeholder="ubuntu">
+                        <input type="text" id="user" class="w-full p-2.5 rounded-lg border dark:bg-primary-700 dark:border-gray-600 outline-none focus:ring-2 focus:ring-blue-500" placeholder="ubuntu">
                     </div>
                     <div>
                         <label class="block text-sm font-medium mb-1">SSH Password</label>
-                        <input type="password" id="password" class="w-full p-2.5 rounded-lg border dark:bg-gray-700 dark:border-gray-600 outline-none focus:ring-2 focus:ring-blue-500" placeholder="Leave blank if using SSH Key">
+                        <input type="password" id="password" class="w-full p-2.5 rounded-lg border dark:bg-primary-700 dark:border-gray-600 outline-none focus:ring-2 focus:ring-blue-500" placeholder="Leave blank if using SSH Key">
                     </div>
                     <div>
                         <label class="block text-sm font-medium mb-1">SSH Private Key (Optional)</label>
-                        <textarea id="ssh_key" rows="3" class="w-full p-2.5 rounded-lg border dark:bg-gray-700 dark:border-gray-600 outline-none focus:ring-2 focus:ring-blue-500 font-mono text-xs" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----&#10;..."></textarea>
+                        <textarea id="ssh_key" rows="3" class="w-full p-2.5 rounded-lg border dark:bg-primary-700 dark:border-gray-600 outline-none focus:ring-2 focus:ring-blue-500 font-mono text-xs" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----&#10;..."></textarea>
                     </div>
                 </div>
                 
                 <div class="flex justify-end gap-3 mt-2">
-                    <button type="button" onclick="closeSettings()" class="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition">Cancel</button>
-                    <button type="submit" class="px-4 py-2 rounded-lg bg-blue-500 text-white font-medium hover:bg-blue-600 transition">Save & Apply</button>
+                    <button type="button" onclick="closeSettings()" class="px-4 py-2 rounded-lg bg-primary-200 dark:bg-primary-700 font-medium hover:bg-primary-300 dark:hover:bg-primary-600 transition">Cancel</button>
+                    <button type="submit" class="px-4 py-2 rounded-lg bg-primary-500 text-white font-medium hover:bg-primary-600 transition">Save & Apply</button>
                 </div>
             </form>
         </div>
     </div>
 
 <!-- Connected Clients Modal -->
-    <div id="clientsModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50 px-4 flex backdrop-blur-sm transition-opacity">
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl p-6 border border-gray-200 dark:border-gray-700 flex flex-col max-h-[85vh]">
+    <div id="clientsModal" class="fixed inset-0 bg-primaryk/60 hidden items-center justify-center z-50 px-4 flex backdrop-blur-sm transition-opacity">
+        <div class="bg-primarye dark:bg-primary-800 rounded-xl shadow-2xl w-full max-w-2xl p-6 border border-gray-200 dark:border-gray-700 flex flex-col max-h-[85vh]">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-2xl font-bold">Connected NTP Clients</h2>
                 <div class="flex items-center gap-2">
                     <label class="text-sm font-medium text-gray-600 dark:text-gray-300">Sort By:</label>
-                    <select id="clientSort" onchange="renderClientsTable()" class="p-1.5 text-sm rounded-lg border dark:bg-gray-700 dark:border-gray-600 outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 dark:bg-gray-700 cursor-pointer">
+                    <select id="clientSort" onchange="renderClientsTable()" class="p-1.5 text-sm rounded-lg border dark:bg-primary-700 dark:border-gray-600 outline-none focus:ring-2 focus:ring-blue-500 bg-primary-50 dark:bg-primary-700 cursor-pointer">
                         <option value="hits_desc">Hits (High to Low)</option>
                         <option value="recent">Most Recent Activity</option>
                         <option value="ip_asc">IP Address</option>
@@ -192,7 +301,7 @@
             
             <div class="overflow-y-auto flex-1 border rounded-lg dark:border-gray-700 shadow-inner">
                 <table class="w-full text-left text-sm font-mono whitespace-nowrap">
-                    <thead class="bg-gray-100 dark:bg-gray-700/80 text-gray-500 dark:text-gray-400 sticky top-0 shadow-sm">
+                    <thead class="bg-primary-100 dark:bg-primary-700/80 text-gray-500 dark:text-gray-400 sticky top-0 shadow-sm">
                         <tr>
                             <th class="p-4">IP Address</th>
                             <th class="p-4">NTP Hits</th>
@@ -207,8 +316,8 @@
             </div>
             
             <div class="flex justify-end gap-3 mt-5 pt-4 border-t dark:border-gray-700">
-                <button type="button" onclick="fetchClients()" class="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition">Refresh Data</button>
-                <button type="button" onclick="closeClientsModal()" class="px-4 py-2 rounded-lg bg-blue-500 text-white font-medium hover:bg-blue-600 transition shadow-md">Close</button>
+                <button type="button" onclick="fetchClients()" class="px-4 py-2 rounded-lg bg-primary-200 dark:bg-primary-700 font-medium hover:bg-primary-300 dark:hover:bg-primary-600 transition">Refresh Data</button>
+                <button type="button" onclick="closeClientsModal()" class="px-4 py-2 rounded-lg bg-primary-500 text-white font-medium hover:bg-primary-600 transition shadow-md">Close</button>
             </div>
         </div>
     </div>
