@@ -5,27 +5,30 @@
 
 version: 2
 updates:
-  # 1. Python dependencies (requirements.txt)
+  # 1. Python dependencies
   - package-ecosystem: "pip"
     directory: "/"
+    target-branch: "pre-update-release"   # <--- CHANGE THIS TO YOUR ACTUAL BRANCH NAME
     schedule:
       interval: "weekly"
     labels:
       - "dependencies"
       - "python"
 
-  # 2. Docker base images (Dockerfile)
+  # 2. Docker base images
   - package-ecosystem: "docker"
     directory: "/"
+    target-branch: "pre-update-release"   # <--- CHANGE THIS TO YOUR ACTUAL BRANCH NAME
     schedule:
       interval: "weekly"
     labels:
       - "dependencies"
       - "docker"
 
-  # 3. GitHub Actions (docker-publish.yml)
+  # 3. GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
+    target-branch: "pre-update-release"   # <--- CHANGE THIS TO YOUR ACTUAL BRANCH NAME
     schedule:
       interval: "weekly"
     labels:
