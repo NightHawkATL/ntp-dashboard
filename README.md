@@ -29,17 +29,17 @@ You can deploy the app using the following Docker Compose:
 ```yaml
 services:
   ntp-dashboard:
-    image: nighthawkatl/ntp-dashboard:latest ## -> Change to "ghcr.io/nighthawkatl/ntp-dashboard:latest" to pull the image from GitHub
-    container_name: ntp-dashboard
-    network_mode: "host"
+    image: ghcr.io/nighthawkatl/ntp-dashboard:latest ## -> Change to "nighthawkatl/ntp-dashboard:latest" to pull from Docker Hub.
+    container_name: ntp-dashboard ## you can call it whatever you want. This is just a friendly suggestion.
+    network_mode: "host" ## Required to allow direct communication with the chrony package on the host.
     environment:
-      - DEBUG_MODE=false
+      - DEBUG_MODE=false ## change to true if you see something strange happening and wish to open an issue and paste logs
     volumes:
-      - ./data:/app/data
-    restart: unless-stopped
+      - ./data:/app/data ## Bind mounts are suggested to have easy-access to the data files.
+    restart: unless-stopped ## Typical deployment unless you wish to change this.
 ```
 # Prerequisites
-In order to get the most out of this app, even for the "local-only" deployment in docker, you will need to install Chrony on your host. for Debian or Ubuntu users, this is as simple as `sudo apt install chrony`. There is a link in the wiki for "troubleshooting" on how to install chrony for other distros.
+In order to get the most out of this app, even for the "local-only" deployment in docker, you will need to install Chrony on your host. For Debian-based or Ubuntu users, this is as simple as `sudo apt install chrony`. There is a link in the wiki for "troubleshooting" on how to install chrony for other distros.
 
 The network mode must be set to "host" to allow direct access to the chrony service that is running on the host. If this is changed to "bridge" or anything else, it will not work as expected.
 
