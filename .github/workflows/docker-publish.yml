@@ -58,7 +58,7 @@ jobs:
 
       # UPDATED: Bumped to v6
       - name: Build and push multi-arch Docker image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           push: true
