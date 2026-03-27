@@ -170,6 +170,18 @@ document.getElementById('configForm').addEventListener('submit', async (e) => {
             try {
                 const res = await fetch('/api/gps');
                 const d = await res.json();
+                const satTableBody = document.getElementById('satTableBody');
+                const satCountEl = document.getElementById('satCount');
+
+                if (d.error) {
+                    baseGpsTimeMs = null;
+                    document.getElementById('gpsTimeDisplay').innerText = d.gps_time || 'GPS unavailable';
+                    document.getElementById('satellitesLayer').innerHTML = '';
+                    satTableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-red-500 whitespace-pre-wrap">${d.error}</td></tr>`;
+                    satCountEl.innerText = 'Unavailable';
+                    sweepTimer = 30;
+                    return;
+                }
                 
                 // --- CAPTURE THE RAW GPS TIME FOR THE LIVE TICKER ---
                 if (d.gps_time && d.gps_time.includes('T')) {
@@ -216,8 +228,8 @@ document.getElementById('configForm').addEventListener('submit', async (e) => {
                 }
 
                 document.getElementById('satellitesLayer').innerHTML = svgContent;
-                document.getElementById('satTableBody').innerHTML = tableHtml;
-                document.getElementById('satCount').innerText = lockedCount + ' Locked';
+                satTableBody.innerHTML = tableHtml;
+                satCountEl.innerText = lockedCount + ' Locked';
                 sweepTimer = 30;
                 
             } catch(e) {

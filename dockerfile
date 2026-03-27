@@ -2,9 +2,13 @@ FROM python:3.14-alpine
 
 WORKDIR /app
 
-# 1. Install Alpine's lightweight packages (No Desktop GUI bloat!)
-# We also install GNU grep just to ensure compatibility with our scripts
-RUN apk add --no-cache chrony gpsd-clients grep
+# 1. Install the default local runtime tools
+ARG INSTALL_GPSD_CLIENTS=false
+RUN set -eux; \
+	apk add --no-cache chrony; \
+	if [ "$INSTALL_GPSD_CLIENTS" = "true" ]; then \
+		apk add --no-cache gpsd-clients; \
+	fi
 
 # 2. Download Tailwind CSS locally
 RUN mkdir -p /app/static && wget -q https://cdn.tailwindcss.com/ -O /app/static/tailwindcss.js
