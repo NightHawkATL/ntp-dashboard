@@ -170,6 +170,26 @@ document.getElementById('configForm').addEventListener('submit', async (e) => {
             try {
                 const res = await fetch('/api/gps');
                 const d = await res.json();
+                const satTableBody = document.getElementById('satTableBody');
+                const satCountEl = document.getElementById('satCount');
+
+                if (d.error) {
+                    baseGpsTimeMs = null;
+                    document.getElementById('gpsTimeDisplay').innerText = d.gps_time || 'GPS unavailable';
+                    document.getElementById('satellitesLayer').innerHTML = '';
+                    // Render error as plain text to avoid HTML/script injection
+                    satTableBody.innerHTML = '';
+                    const errorRow = document.createElement('tr');
+                    const errorCell = document.createElement('td');
+                    errorCell.colSpan = 5;
+                    errorCell.className = 'p-4 text-red-500 whitespace-pre-wrap';
+                    errorCell.textContent = d.error;
+                    errorRow.appendChild(errorCell);
+                    satTableBody.appendChild(errorRow);
+                    satCountEl.innerText = 'Unavailable';
+                    sweepTimer = 30;
+                    return;
+                }
                 
                 // --- CAPTURE THE RAW GPS TIME FOR THE LIVE TICKER ---
                 if (d.gps_time && d.gps_time.includes('T')) {
@@ -216,8 +236,8 @@ document.getElementById('configForm').addEventListener('submit', async (e) => {
                 }
 
                 document.getElementById('satellitesLayer').innerHTML = svgContent;
-                document.getElementById('satTableBody').innerHTML = tableHtml;
-                document.getElementById('satCount').innerText = lockedCount + ' Locked';
+                satTableBody.innerHTML = tableHtml;
+                satCountEl.innerText = lockedCount + ' Locked';
                 sweepTimer = 30;
                 
             } catch(e) {

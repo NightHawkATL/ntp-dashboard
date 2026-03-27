@@ -43,6 +43,8 @@ In order to get the most out of this app, even for the "local-only" deployment i
 
 The network mode must be set to "host" to allow direct access to the chrony service that is running on the host. If this is changed to "bridge" or anything else, it will not work as expected.
 
+Local GPS probing from inside the container is optional. The default build installs Chrony tooling only, which avoids shipping Alpine's gpsd package by default. If you need local `gpspipe` support in the container, build with `INSTALL_GPSD_CLIENTS=true`.
+
 # Resource Usage
 Usage is low running either the amd64 or the arm 64 image. Network is near 0% even if you are using the "remote" mode to access a local NTP server on your network.
 
