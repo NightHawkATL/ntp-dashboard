@@ -66,6 +66,8 @@ These are listed in no particular order
 4. ~~Compact image~~
 5. ~~Convert javascript in HTML to a script call as a separate file rather than being in the HTML~~
 6. ~~Color picker to choose your favorite color in light or dark mode~~
+7.  Work on updates and clearing vulnerabilities to get on a good maintenance and release schedule
+8.  Com up with a few new features and ideas to improve the UI/UX (keeping the ball rolling)
 
 # Troublehooting
 
