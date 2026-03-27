@@ -6,7 +6,7 @@ The initial deployment for this app is to pull the sources data from Chrony on y
 
 <img width="1045" height="858" alt="image" src="https://github.com/user-attachments/assets/8c26db82-3838-4c46-8c5a-135d765cc5ae" />
 
-When connecting the app to a personal NTP GPS-enabled server over SSH, you will then see the NMEA and PPS data, almong with the GPS data visualized. All you have to do is click on the "Connection Setup" button and put in the SSH credentials for your personal NTP server and it will make the connection and populate the data correctly. The login credentials are stored locally in a "config.json" file that is stored wherever you set the bind mount to (default is `.data:/app/data`). The password is stored as encrypted and a separate key is used to unlock or decrypt the password for use.
+When connecting the app to a personal NTP GPS-enabled server over SSH, you will then see the NMEA and PPS data, along with the GPS data visualized. All you have to do is click on the "Connection Setup" button and put in the SSH credentials for your personal NTP server and it will make the connection and populate the data correctly. The login credentials are stored locally in a "config.json" file that is stored wherever you set the bind mount to (default is `.data:/app/data`). The password is stored as encrypted and a separate key is used to unlock or decrypt the password for use.
 
 <img width="940" height="852" alt="image" src="https://github.com/user-attachments/assets/f33ea67f-cda3-49bb-850a-0d03c18ec7d4" />
 
@@ -69,7 +69,7 @@ These are listed in no particular order
 7.  Work on updates and clearing vulnerabilities to get on a good maintenance and release schedule
 8.  Come up with a few new features and ideas to improve the UI/UX (keeping the ball rolling)
 
-# Troublehooting
+# Troubleshooting
 
 Please check the [wiki](https://github.com/NightHawkATL/ntp-dashboard/wiki).
 
