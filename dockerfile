@@ -1,7 +1,4 @@
 FROM python:3.14-alpine
-ARG APP_VERSION=dev
-ENV APP_VERSION=${APP_VERSION}
-
 
 WORKDIR /app
 
@@ -18,6 +15,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # 4. Copy the app files (.dockerignore will block the junk automatically)
 COPY . .
+
+# Set version last so dependency layers are not invalidated on version changes
+ARG APP_VERSION=dev
+ENV APP_VERSION=${APP_VERSION}
 
 # Match your custom port
 EXPOSE 55234
