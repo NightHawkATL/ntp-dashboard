@@ -66,4 +66,4 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            APP_VERSION=${{ github.event.release.tag_name }}
+            APP_VERSION=${{ github.event_name == 'release' && github.event.release.tag_name || github.ref_name }}
