@@ -11,6 +11,9 @@ updates:
     target-branch: "pre-update-release"   # <--- CHANGE THIS TO YOUR ACTUAL BRANCH NAME
     schedule:
       interval: "weekly"
+      day: "wednesday"          # Options: monday, tuesday, etc.
+      time: "06:00"          # 24-hour format (HH:MM)
+      timezone: "America/New_York" # Your local timezone
     labels:
       - "dependencies"
       - "python"
@@ -21,6 +24,9 @@ updates:
     target-branch: "pre-update-release"   # <--- CHANGE THIS TO YOUR ACTUAL BRANCH NAME
     schedule:
       interval: "weekly"
+      day: "wednesday"          # Options: monday, tuesday, etc.
+      time: "06:00"          # 24-hour format (HH:MM)
+      timezone: "America/New_York" # Your local timezone
     labels:
       - "dependencies"
       - "docker"
@@ -31,6 +37,9 @@ updates:
     target-branch: "pre-update-release"   # <--- CHANGE THIS TO YOUR ACTUAL BRANCH NAME
     schedule:
       interval: "weekly"
+      day: "wednesday"          # Options: monday, tuesday, etc.
+      time: "06:00"          # 24-hour format (HH:MM)
+      timezone: "America/New_York" # Your local timezone
     labels:
       - "dependencies"
       - "github-actions"
