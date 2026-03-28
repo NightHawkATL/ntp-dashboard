@@ -10,6 +10,10 @@ permissions:
   contents: write
   pull-requests: write
 
+concurrency:
+  group: weekly-security-scan-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   scan-and-remediate:
     runs-on: ubuntu-latest
@@ -39,7 +43,7 @@ jobs:
       - name: Build local image for scanning
         run: |
           set -euo pipefail
-          docker build --build-arg INSTALL_GPSD_CLIENTS=false -t "$LOCAL_IMAGE" .
+          docker build -f dockerfile --build-arg INSTALL_GPSD_CLIENTS=false -t "$LOCAL_IMAGE" .
 
       - name: Run Grype scans
         run: |
@@ -100,7 +104,7 @@ jobs:
           git commit -m "chore(security): weekly CVE remediation"
           git push --force-with-lease origin "$PR_BRANCH"
 
-          pr_number="$(gh pr list --base "$BASE_BRANCH" --head "$PR_BRANCH" --state open --json number --jq '.[0].number')"
+          pr_number="$(gh pr list --base "$BASE_BRANCH" --head "$PR_BRANCH" --state open --json number --jq '.[0].number // ""')"
 
           pr_title="chore(security): weekly CVE remediation"
           pr_body="## Weekly Security Remediation\n\nThis automated PR includes fixable dependency updates identified during the weekly Grype + pip-audit security run.\n\n### Included in this run\n- Grype scan of repository source\n- Grype scan of locally built image\n- Grype scan of latest released image\n- pip-audit auto-fix for Python dependencies\n\nScan artifacts are attached to the workflow run under the \`weekly-security-reports\` artifact."
