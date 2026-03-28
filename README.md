@@ -6,7 +6,7 @@ The initial deployment for this app is to pull the sources data from Chrony on y
 
 <img width="1045" height="858" alt="image" src="https://github.com/user-attachments/assets/8c26db82-3838-4c46-8c5a-135d765cc5ae" />
 
-When connecting the app to a personal NTP GPS-enabled server over SSH, you will then see the NMEA and PPS data, almong with the GPS data visualized. All you have to do is click on the "Connection Setup" button and put in the SSH credentials for your personal NTP server and it will make the connection and populate the data correctly. The login credentials are stored locally in a "config.json" file that is stored wherever you set the bind mount to (default is `.data:/app/data`). The password is stored as encrypted and a separate key is used to unlock or decrypt the password for use.
+When connecting the app to a personal NTP GPS-enabled server over SSH, you will then see the NMEA and PPS data, along with the GPS data visualized. All you have to do is click on the "Connection Setup" button and put in the SSH credentials for your personal NTP server and it will make the connection and populate the data correctly. The login credentials are stored locally in a "config.json" file that is stored wherever you set the bind mount to (default is `.data:/app/data`). The password is stored as encrypted and a separate key is used to unlock or decrypt the password for use.
 
 <img width="940" height="852" alt="image" src="https://github.com/user-attachments/assets/f33ea67f-cda3-49bb-850a-0d03c18ec7d4" />
 
@@ -43,10 +43,10 @@ In order to get the most out of this app, even for the "local-only" deployment i
 
 The network mode must be set to "host" to allow direct access to the chrony service that is running on the host. If this is changed to "bridge" or anything else, it will not work as expected.
 
-Local GPS probing from inside the container is optional. The default build installs Chrony tooling only, which avoids shipping Alpine's gpsd package by default. If you need local `gpspipe` support in the container, build with `INSTALL_GPSD_CLIENTS=true`.
+Local GPS probing from inside the container is optional. The default build installs Chrony tooling only, which avoids shipping Alpine's gpsd package by default. If you need local `gpspipe` support in the container, build with `INSTALL_GPSD_CLIENTS=true`. It is typically not needed locally unless you are running the dashboard directly on the NTP Server. Because `gpspipe` currently has a critical CVE [CVE-2025-67268](https://nvd.nist.gov/vuln/detail/CVE-2025-67268) that pertains to `apk / alpine/gpsd / 3.26.1-r0`. In order to provide a safe and secure application, this has been specifically removed for those that are installing the app for a remote connection. If you intend to run the app local to the NTP server, you will need to build from source and add the argument to install `gpsd`. See the `compose.yaml` [here](https://github.com/NightHawkATL/ntp-dashboard/blob/main/compose.yaml).
 
 # Resource Usage
-Usage is low running either the amd64 or the arm 64 image. Network is near 0% even if you are using the "remote" mode to access a local NTP server on your network.
+Usage is low running either the amd64 or the arm64 image. Network is near 0% even if you are using the "remote" mode to access a local NTP server on your network.
 
 amd64:
 
@@ -66,8 +66,10 @@ These are listed in no particular order
 4. ~~Compact image~~
 5. ~~Convert javascript in HTML to a script call as a separate file rather than being in the HTML~~
 6. ~~Color picker to choose your favorite color in light or dark mode~~
+7.  Work on updates and clearing vulnerabilities to get on a good maintenance and release schedule
+8.  Come up with a few new features and ideas to improve the UI/UX (keeping the ball rolling)
 
-# Troublehooting
+# Troubleshooting
 
 Please check the [wiki](https://github.com/NightHawkATL/ntp-dashboard/wiki).
 

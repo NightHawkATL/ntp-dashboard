@@ -4,10 +4,11 @@ services:
   ntp-dashboard:
     build:
       context: .
+      dockerfile: dockerfile
       args:
         INSTALL_GPSD_CLIENTS: "false" # Set to true only if you need local gpspipe inside the container.
     container_name: ntp-dashboard
     network_mode: "host" # Allows the container to query host chrony; local gpspipe support is optional.
     volumes:
-      - /mnt/Apps/Storage/ntp-docker/templates/config.json:/app/config.json # Persists UI settings
+      - ./data:/app/data # Persists UI settings
     restart: unless-stopped

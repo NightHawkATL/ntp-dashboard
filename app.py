@@ -174,7 +174,7 @@ def get_gps():
     satellites =[]
     gps_time = "Waiting for lock..."
     error = None
-    if gps_out and ("Error" in gps_out or "command not found" in gps_out.lower()):
+    if gps_out and (gps_out.startswith('Error:') or "command not found" in gps_out.lower()):
         error = gps_out
         if config.get("mode") == "local" and "gpspipe" in gps_out and "not found" in gps_out.lower():
             error = "Local GPS support is not installed in this image. Rebuild with INSTALL_GPSD_CLIENTS=true to enable gpspipe, or switch to Remote mode."
