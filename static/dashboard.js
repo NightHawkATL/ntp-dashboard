@@ -177,7 +177,11 @@ document.getElementById('configForm').addEventListener('submit', async (e) => {
                     baseGpsTimeMs = null;
                     document.getElementById('gpsTimeDisplay').innerText = d.gps_time || 'GPS unavailable';
                     document.getElementById('satellitesLayer').innerHTML = '';
-                    satTableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-red-500 whitespace-pre-wrap">${d.error}</td></tr>`;
+                    satTableBody.innerHTML = '<tr><td colspan="5" class="p-4 text-red-500 whitespace-pre-wrap"></td></tr>';
+                    const errorCell = satTableBody.querySelector('tr td');
+                    if (errorCell) {
+                        errorCell.textContent = d.error;
+                    }
                     satCountEl.innerText = 'Unavailable';
                     sweepTimer = 30;
                     return;
