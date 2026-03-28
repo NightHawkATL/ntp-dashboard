@@ -58,7 +58,12 @@ def run_commands_local(cmds):
             else:
                 results.append(proc.stdout)
         except Exception as e:
-            results.append(f"Error: {str(e)}")
+            # Log detailed exception server-side, but return a generic error to the client.
+            try:
+                app.logger.exception("Error while executing local command")
+            except Exception:
+                pass
+            results.append("Error: An internal error occurred while executing a local command.")
     return results
 
 def run_commands_remote(cmds, config):
@@ -96,7 +101,12 @@ def run_commands_remote(cmds, config):
             else:
                 results.append(std_out)
     except Exception as e:
-        return[f"Error: {str(e)}"] * len(cmds)
+        # Log detailed exception server-side, but return a generic error to the client.
+        try:
+            app.logger.exception("Error while executing remote command")
+        except Exception:
+            pass
+        return ["Error: An internal error occurred while executing a remote command."] * len(cmds)
     finally:
         if key_filepath and os.path.exists(key_filepath):
             os.remove(key_filepath)
