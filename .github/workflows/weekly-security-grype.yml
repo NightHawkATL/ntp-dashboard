@@ -1,0 +1,118 @@
+name: Weekly Security Scan and Remediation
+
+on:
+  schedule:
+    # Wednesday 10:00 UTC (~6am ET during DST, ~5am ET during EST)
+    - cron: "0 10 * * 3"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  scan-and-remediate:
+    runs-on: ubuntu-latest
+    env:
+      BASE_BRANCH: pre-update-release
+      PR_BRANCH: security/weekly-cve-remediation
+      LOCAL_IMAGE: ntp-dashboard:security-scan
+      RELEASED_IMAGE: ghcr.io/${{ github.repository }}:latest
+
+    steps:
+      - name: Checkout base branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BASE_BRANCH }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install scanner and remediation tools
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip pip-audit
+          docker pull anchore/grype:v0.79.3
+
+      - name: Build local image for scanning
+        run: |
+          set -euo pipefail
+          docker build --build-arg INSTALL_GPSD_CLIENTS=false -t "$LOCAL_IMAGE" .
+
+      - name: Run Grype scans
+        run: |
+          set -euo pipefail
+          mkdir -p security-reports
+
+          docker run --rm \
+            -v "$PWD":/workspace \
+            anchore/grype:v0.79.3 \
+            dir:/workspace \
+            -o json > security-reports/grype-project.json
+
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            anchore/grype:v0.79.3 \
+            "$LOCAL_IMAGE" \
+            -o json > security-reports/grype-image-local.json
+
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            anchore/grype:v0.79.3 \
+            "$RELEASED_IMAGE" \
+            -o json > security-reports/grype-image-released.json || true
+
+      - name: Attempt auto-remediation for Python dependencies
+        run: |
+          set -euo pipefail
+          pip-audit -r requirements.txt --fix || true
+
+      - name: Check for fixable dependency changes
+        id: changes
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- requirements.txt; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload scan artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-security-reports
+          path: security-reports/
+
+      - name: Create or update remediation PR
+        if: steps.changes.outputs.has_changes == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git checkout -B "$PR_BRANCH"
+          git add requirements.txt
+          git commit -m "chore(security): weekly CVE remediation"
+          git push --force-with-lease origin "$PR_BRANCH"
+
+          pr_number="$(gh pr list --base "$BASE_BRANCH" --head "$PR_BRANCH" --state open --json number --jq '.[0].number')"
+
+          pr_title="chore(security): weekly CVE remediation"
+          pr_body="## Weekly Security Remediation\n\nThis automated PR includes fixable dependency updates identified during the weekly Grype + pip-audit security run.\n\n### Included in this run\n- Grype scan of repository source\n- Grype scan of locally built image\n- Grype scan of latest released image\n- pip-audit auto-fix for Python dependencies\n\nScan artifacts are attached to the workflow run under the \`weekly-security-reports\` artifact."
+
+          if [ -z "$pr_number" ]; then
+            gh pr create \
+              --base "$BASE_BRANCH" \
+              --head "$PR_BRANCH" \
+              --title "$pr_title" \
+              --body "$pr_body"
+          else
+            gh pr edit "$pr_number" \
+              --title "$pr_title" \
+              --body "$pr_body"
+          fi
