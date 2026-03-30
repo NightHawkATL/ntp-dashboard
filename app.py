@@ -3,12 +3,18 @@ from flask import Flask, render_template, jsonify, request, send_from_directory
 import paramiko
 from cryptography.fernet import Fernet
 
+LOG_LEVEL_NAME = os.environ.get('LOG_LEVEL', 'INFO').upper()
+LOG_LEVEL = getattr(logging, LOG_LEVEL_NAME, logging.INFO)
+
 logging.basicConfig(
-    level=logging.INFO,
+    level=LOG_LEVEL,
     format='%(asctime)s [%(levelname)s] %(message)s',
     datefmt='%Y-%m-%dT%H:%M:%S'
 )
 log = logging.getLogger(__name__)
+
+if not hasattr(logging, LOG_LEVEL_NAME):
+    log.warning('Invalid LOG_LEVEL=%s; defaulting to INFO', LOG_LEVEL_NAME)
 
 app = Flask(__name__)
 
@@ -272,9 +278,10 @@ def config_endpoint():
     return jsonify(conf)
 
 if __name__ == '__main__':
-    is_debug = os.environ.get('DEBUG_MODE', 'false').lower() == 'true'
+    debug_mode_env = os.environ.get('DEBUG_MODE', '').lower()
+    is_debug = debug_mode_env == 'true' or LOG_LEVEL_NAME == 'DEBUG'
     startup_config = load_config()
-    log.info('NTP Dashboard %s starting on port 55234; mode=%s host=%s', APP_VERSION, startup_config.get('mode'), startup_config.get('host') or 'local')
+    log.info('NTP Dashboard %s starting on port 55234; mode=%s host=%s log_level=%s', APP_VERSION, startup_config.get('mode'), startup_config.get('host') or 'local', LOG_LEVEL_NAME)
     if is_debug:
         log.warning('DEBUG MODE ENABLED - detailed errors and tracebacks will be available in container logs and browser responses. Do not use in production.')
     app.run(host='0.0.0.0', port=55234, debug=is_debug)
