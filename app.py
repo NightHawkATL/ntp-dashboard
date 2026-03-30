@@ -188,19 +188,22 @@ def get_gps():
             error = "Local GPS support is not installed in this image. Rebuild with INSTALL_GPSD_CLIENTS=true to enable gpspipe, or switch to Remote mode."
             gps_time = "Local GPS support not installed"
 
-    try:
-        if gps_out and not error:
-            for line in gps_out.strip().split('\n'):
-                if not line: continue
-                try:
-                    data = json.loads(line)
-                    if data.get("class") == "SKY":
-                        satellites = data.get("satellites",[])
-                    elif data.get("class") == "TPV" and "time" in data:
-                        gps_time = data.get("time")
-                except: pass
-    except: pass
-    
+    if gps_out and not error:
+        for line in gps_out.strip().split('\n'):
+            if not line:
+                continue
+            try:
+                data = json.loads(line)
+                if data.get("class") == "SKY":
+                    satellites = data.get("satellites", [])
+                elif data.get("class") == "TPV" and "time" in data:
+                    gps_time = data.get("time")
+            except json.JSONDecodeError as e:
+                log.debug('GPS: could not parse line as JSON: %s', e)
+            except Exception as e:
+                log.debug('GPS: unexpected error parsing line: %s', e)
+                error = f"GPS parsing error: {e}"
+
     if error:
         log.warning('GPS API returned error in %s mode: %s', config.get('mode'), error)
     return jsonify({"satellites": satellites, "gps_time": gps_time, "error": error})
