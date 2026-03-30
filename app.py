@@ -1,7 +1,14 @@
-import os, json, subprocess, tempfile
+import os, json, subprocess, tempfile, logging
 from flask import Flask, render_template, jsonify, request, send_from_directory
 import paramiko
 from cryptography.fernet import Fernet
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    datefmt='%Y-%m-%dT%H:%M:%S'
+)
+log = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
@@ -17,6 +24,7 @@ os.makedirs(DATA_DIR, exist_ok=True)
 # --- Encryption Logic ---
 def get_cipher():
     if not os.path.exists(KEY_FILE):
+        log.info('Encryption key not found; generating %s', KEY_FILE)
         key = Fernet.generate_key()
         with open(KEY_FILE, 'wb') as key_file:
             key_file.write(key)
@@ -33,7 +41,8 @@ def decrypt_pwd(encrypted_pwd):
     if not encrypted_pwd: return ""
     try:
         return get_cipher().decrypt(encrypted_pwd.encode()).decode()
-    except:
+    except Exception as e:
+        log.error('Failed to decrypt stored credential: %s', e)
         return ""
 
 # --- Config Handling ---
@@ -41,11 +50,13 @@ def load_config():
     if os.path.exists(CONFIG_FILE):
         try:
             with open(CONFIG_FILE, 'r') as f: return json.load(f)
-        except: pass
+        except Exception as e:
+            log.error('Failed to read config file %s: %s', CONFIG_FILE, e)
     return {"mode": "local", "host": "", "user": "ubuntu", "password": "", "ssh_key": ""}
 
 def save_config(config):
     with open(CONFIG_FILE, 'w') as f: json.dump(config, f)
+    log.info('Configuration saved; mode=%r host=%r', config.get('mode'), config.get('host') or 'local')
 
 # --- Command Execution ---
 def run_commands_local(cmds):
@@ -54,15 +65,12 @@ def run_commands_local(cmds):
         try:
             proc = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=5)
             if proc.returncode != 0:
+                log.warning('Local command failed (rc=%s): %s :: %s', proc.returncode, cmd, proc.stdout.strip())
                 results.append(f"Error: {proc.stdout.strip()}")
             else:
                 results.append(proc.stdout)
         except Exception as e:
-            # Log detailed exception server-side, but return a generic error to the client.
-            try:
-                app.logger.exception("Error while executing local command")
-            except Exception:
-                pass
+            log.exception('Local command exception for: %s', cmd)
             results.append("Error: An internal error occurred while executing a local command.")
     return results
 
@@ -88,6 +96,7 @@ def run_commands_remote(cmds, config):
             with os.fdopen(fd, 'w') as f:
                 f.write(ssh_key_str)
         
+        log.info('Opening SSH connection to host=%s user=%s', config.get('host'), config.get('user'))
         ssh.connect(config.get('host'), username=config.get('user'), password=pwd, key_filename=key_filepath, timeout=10, banner_timeout=15, auth_timeout=15, look_for_keys=False)
         
         for cmd in cmds:
@@ -97,15 +106,12 @@ def run_commands_remote(cmds, config):
             
             exit_status = stdout.channel.recv_exit_status()
             if exit_status != 0:
+                log.warning('Remote command failed on host=%s (rc=%s): %s :: %s', config.get('host'), exit_status, cmd, err_out if err_out else std_out)
                 results.append(f"Error: {err_out if err_out else std_out}")
             else:
                 results.append(std_out)
     except Exception as e:
-        # Log detailed exception server-side, but return a generic error to the client.
-        try:
-            app.logger.exception("Error while executing remote command")
-        except Exception:
-            pass
+        log.exception('Remote command execution failed for host=%s', config.get('host'))
         return ["Error: An internal error occurred while executing a remote command."] * len(cmds)
     finally:
         if key_filepath and os.path.exists(key_filepath):
@@ -158,6 +164,8 @@ def get_ntp():
     
     err = tracking_out if "Error" in tracking_out else None
     if not err and "Error" in sources_out: err = sources_out
+    if err:
+        log.warning('NTP API returned error in %s mode: %s', config.get('mode'), err)
     
     return jsonify({"offset": offset, "sources": sources, "error": err})
 
@@ -180,19 +188,24 @@ def get_gps():
             error = "Local GPS support is not installed in this image. Rebuild with INSTALL_GPSD_CLIENTS=true to enable gpspipe, or switch to Remote mode."
             gps_time = "Local GPS support not installed"
 
-    try:
-        if gps_out and not error:
-            for line in gps_out.strip().split('\n'):
-                if not line: continue
-                try:
-                    data = json.loads(line)
-                    if data.get("class") == "SKY":
-                        satellites = data.get("satellites",[])
-                    elif data.get("class") == "TPV" and "time" in data:
-                        gps_time = data.get("time")
-                except: pass
-    except: pass
-    
+    if gps_out and not error:
+        for line in gps_out.strip().split('\n'):
+            if not line:
+                continue
+            try:
+                data = json.loads(line)
+                if data.get("class") == "SKY":
+                    satellites = data.get("satellites", [])
+                elif data.get("class") == "TPV" and "time" in data:
+                    gps_time = data.get("time")
+            except json.JSONDecodeError as e:
+                log.debug('GPS: could not parse line as JSON: %s', e)
+            except Exception as e:
+                log.debug('GPS: unexpected error parsing line: %s', e)
+                error = f"GPS parsing error: {e}"
+
+    if error:
+        log.warning('GPS API returned error in %s mode: %s', config.get('mode'), error)
     return jsonify({"satellites": satellites, "gps_time": gps_time, "error": error})
 
 @app.route('/api/clients')
@@ -230,6 +243,8 @@ def get_clients():
                     })
                     
     err = out if ("Error" in out or "command not found" in out.lower()) else None
+    if err:
+        log.warning('Clients API returned error in %s mode: %s', config.get('mode'), err)
     return jsonify({"clients": clients, "error": err})
 
 @app.route('/api/config', methods=['GET', 'POST'])
@@ -258,6 +273,8 @@ def config_endpoint():
 
 if __name__ == '__main__':
     is_debug = os.environ.get('DEBUG_MODE', 'false').lower() == 'true'
+    startup_config = load_config()
+    log.info('NTP Dashboard %s starting on port 55234; mode=%s host=%s', APP_VERSION, startup_config.get('mode'), startup_config.get('host') or 'local')
     if is_debug:
-        print("⚠️ DEBUG MODE ENABLED - Detailed errors will be shown in the browser.")
+        log.warning('DEBUG MODE ENABLED - detailed errors and tracebacks will be available in container logs and browser responses. Do not use in production.')
     app.run(host='0.0.0.0', port=55234, debug=is_debug)
