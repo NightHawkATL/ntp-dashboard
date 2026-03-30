@@ -4,7 +4,6 @@ services:
   ntp-dashboard:
     build:
       context: .
-      dockerfile: dockerfile
       args:
         INSTALL_GPSD_CLIENTS: "false" # Set to true only if you need local gpspipe inside the container.
     container_name: ntp-dashboard
