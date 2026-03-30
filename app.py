@@ -56,7 +56,7 @@ def load_config():
 
 def save_config(config):
     with open(CONFIG_FILE, 'w') as f: json.dump(config, f)
-    log.info('Configuration saved; mode=%s host=%s', config.get('mode'), config.get('host') or 'local')
+    log.info('Configuration saved; mode=%r host=%r', config.get('mode'), config.get('host') or 'local')
 
 # --- Command Execution ---
 def run_commands_local(cmds):
