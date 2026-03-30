@@ -9,7 +9,7 @@ services:
     container_name: ntp-dashboard
     network_mode: "host" # Allows the container to query host chrony; local gpspipe support is optional.
     environment:
-      - LOG_LEVEL=INFO # Default level for normal operation
+      - LOG_LEVEL=DEBUG # Default level for normal operation
         # Supported levels:
         # - DEBUG    # Most verbose (for troubleshooting)
         # - INFO     # Standard runtime logs (recommended default)

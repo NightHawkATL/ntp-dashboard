@@ -201,7 +201,7 @@ def get_ntp():
 def get_gps():
     log.debug('GET /api/gps')
     config = load_config()
-    cmd = ["timeout 5 gpspipe -w -n 30"]
+    cmd = ["timeout 5 gpspipe -w -n 30 || true"]
 
     if config.get("mode") == "local":
         gps_out = run_commands_local(cmd)[0]
@@ -212,10 +212,16 @@ def get_gps():
     gps_time = "Waiting for lock..."
     error = None
     if gps_out and (gps_out.startswith('Error:') or "command not found" in gps_out.lower()):
-        error = gps_out
-        if config.get("mode") == "local" and "gpspipe" in gps_out and "not found" in gps_out.lower():
-            error = "Local GPS support is not installed in this image. Rebuild with INSTALL_GPSD_CLIENTS=true to enable gpspipe, or switch to Remote mode."
-            gps_time = "Local GPS support not installed"
+        # timeout exits with code 124, wrapping valid gpspipe output in "Error: "
+        # Strip the prefix and parse normally if valid GPS JSON is present
+        if gps_out.startswith('Error:') and '{"class":' in gps_out:
+            gps_out = gps_out[len('Error:'):].strip()
+            log.debug('Stripped Error prefix from gpspipe timeout output')
+        else:
+            error = gps_out
+            if config.get("mode") == "local" and "gpspipe" in gps_out and "not found" in gps_out.lower():
+                error = "Local GPS support is not installed in this image. Rebuild with INSTALL_GPSD_CLIENTS=true to enable gpspipe, or switch to Remote mode."
+                gps_time = "Local GPS support not installed"
 
     if gps_out and not error:
         for line in gps_out.strip().split('\n'):
@@ -223,8 +229,8 @@ def get_gps():
                 continue
             try:
                 data = json.loads(line)
-                if data.get("class") == "SKY":
-                    satellites = data.get("satellites", [])
+                if data.get("class") == "SKY" and "satellites" in data:
+                    satellites = data["satellites"]
                     log.debug('GPS SKY: %d satellites', len(satellites))
                 elif data.get("class") == "TPV" and "time" in data:
                     gps_time = data.get("time")
