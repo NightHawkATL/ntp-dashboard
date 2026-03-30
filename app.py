@@ -181,7 +181,7 @@ def get_ntp():
 @app.route('/api/gps')
 def get_gps():
     config = load_config()
-    cmd = ["timeout 3 gpspipe -w -n 12"]
+    cmd = ["timeout 3 gpspipe -w -n 12 || true"]
     
     if config.get("mode") == "local":
         gps_out = run_commands_local(cmd)[0]
@@ -204,7 +204,8 @@ def get_gps():
             try:
                 data = json.loads(line)
                 if data.get("class") == "SKY":
-                    satellites = data.get("satellites", [])
+                    if "satellites" in data:
+                        satellites = data["satellites"]
                 elif data.get("class") == "TPV" and "time" in data:
                     gps_time = data.get("time")
             except json.JSONDecodeError as e:
