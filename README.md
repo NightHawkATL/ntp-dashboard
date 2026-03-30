@@ -33,13 +33,13 @@ services:
     container_name: ntp-dashboard ## you can call it whatever you want. This is just a friendly suggestion.
     network_mode: "host" ## Required to allow direct communication with the chrony package on the host.
     environment:
-    - LOG_LEVEL=INFO # Default level for normal operation
-      # Supported levels:
-      # - DEBUG    # Most verbose (for troubleshooting)
-      # - INFO     # Standard runtime logs (recommended default)
-      # - WARNING  # Warnings and errors only
-      # - ERROR    # Errors only
-      # - CRITICAL # Critical failures only
+      - LOG_LEVEL=INFO # Default level for normal operation
+        # Supported levels:
+        # - DEBUG    # Most verbose (for troubleshooting)
+        # - INFO     # Standard runtime logs (recommended default)
+        # - WARNING  # Warnings and errors only
+        # - ERROR    # Errors only
+        # - CRITICAL # Critical failures only
     volumes:
       - ./data:/app/data ## Bind mounts are suggested to have easy-access to the data files.
     restart: unless-stopped ## Typical deployment unless you wish to change this.
