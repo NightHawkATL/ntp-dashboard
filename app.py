@@ -273,5 +273,5 @@ if __name__ == '__main__':
     startup_config = load_config()
     log.info('NTP Dashboard %s starting on port 55234; mode=%s host=%s', APP_VERSION, startup_config.get('mode'), startup_config.get('host') or 'local')
     if is_debug:
-        log.warning('DEBUG MODE ENABLED - Detailed errors will be shown in the browser. Do not use in production.')
+        log.warning('DEBUG MODE ENABLED - detailed errors and tracebacks will be available in container logs and browser responses. Do not use in production.')
     app.run(host='0.0.0.0', port=55234, debug=is_debug)
