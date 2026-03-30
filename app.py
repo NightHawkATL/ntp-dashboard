@@ -210,8 +210,8 @@ def get_gps():
             except json.JSONDecodeError as e:
                 log.debug('GPS: could not parse line as JSON: %s', e)
             except Exception as e:
-                log.debug('GPS: unexpected error parsing line: %s', e)
-                error = f"GPS parsing error: {e}"
+                log.warning('GPS: unexpected error parsing line: %s', e)
+                error = "GPS parsing error occurred"
 
     if error:
         log.warning('GPS API returned error in %s mode: %s', config.get('mode'), error)
