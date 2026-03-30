@@ -33,7 +33,13 @@ services:
     container_name: ntp-dashboard ## you can call it whatever you want. This is just a friendly suggestion.
     network_mode: "host" ## Required to allow direct communication with the chrony package on the host.
     environment:
-      - DEBUG_MODE=false ## change to true if you see something strange happening and wish to open an issue and paste logs
+    - LOG_LEVEL=INFO # Default level for normal operation
+      # Supported levels:
+      # - DEBUG    # Most verbose (for troubleshooting)
+      # - INFO     # Standard runtime logs (recommended default)
+      # - WARNING  # Warnings and errors only
+      # - ERROR    # Errors only
+      # - CRITICAL # Critical failures only
     volumes:
       - ./data:/app/data ## Bind mounts are suggested to have easy-access to the data files.
     restart: unless-stopped ## Typical deployment unless you wish to change this.
@@ -68,6 +74,7 @@ These are listed in no particular order
 6. ~~Color picker to choose your favorite color in light or dark mode~~
 7.  Work on updates and clearing vulnerabilities to get on a good maintenance and release schedule
 8.  Come up with a few new features and ideas to improve the UI/UX (keeping the ball rolling)
+9.  ~~Fix logging to show in the container logs for those times the app may not load~~
 
 # Troubleshooting
 
