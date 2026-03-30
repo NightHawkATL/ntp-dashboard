@@ -343,7 +343,7 @@ function renderClientsTable() {
         loadUI();
         fetchNTP();
         fetchGPS();
-        setInterval(fetchNTP, 2000);
+        setInterval(fetchNTP, 5000);
         setInterval(fetchGPS, 30000);
        
         // 9. Register PWA Service Worker
