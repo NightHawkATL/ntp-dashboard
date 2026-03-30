@@ -9,7 +9,8 @@ LOG_LEVEL = getattr(logging, LOG_LEVEL_NAME, logging.INFO)
 logging.basicConfig(
     level=LOG_LEVEL,
     format='%(asctime)s [%(levelname)s] %(message)s',
-    datefmt='%Y-%m-%dT%H:%M:%S'
+    datefmt='%Y-%m-%dT%H:%M:%S',
+    force=True
 )
 log = logging.getLogger(__name__)
 
@@ -17,6 +18,8 @@ if not hasattr(logging, LOG_LEVEL_NAME):
     log.warning('Invalid LOG_LEVEL=%s; defaulting to INFO', LOG_LEVEL_NAME)
 
 app = Flask(__name__)
+app.logger.setLevel(LOG_LEVEL)
+logging.getLogger('werkzeug').setLevel(LOG_LEVEL)
 
 APP_VERSION = os.environ.get("APP_VERSION", "dev")
 
@@ -207,7 +210,7 @@ def get_gps():
             except json.JSONDecodeError as e:
                 log.debug('GPS: could not parse line as JSON: %s', e)
             except Exception as e:
-                log.debug('GPS: unexpected error parsing line: %s', e)
+                log.exception('GPS: unexpected error parsing line: %s', e)
                 error = "GPS parsing error occurred"
 
     if error:
