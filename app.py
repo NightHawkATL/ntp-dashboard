@@ -207,7 +207,7 @@ def get_gps():
             except json.JSONDecodeError as e:
                 log.debug('GPS: could not parse line as JSON: %s', e)
             except Exception as e:
-                log.debug('GPS: unexpected error parsing line: %s', e)
+                log.warning('GPS: unexpected error parsing line: %s', e)
                 error = "GPS parsing error occurred"
 
     if error:
