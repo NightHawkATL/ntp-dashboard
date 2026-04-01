@@ -9,9 +9,9 @@ services:
     container_name: ntp-dashboard
     network_mode: "host" # Allows the container to query host chrony; local gpspipe support is optional.
     environment:
-      - LOG_LEVEL=INFO # Default level for normal operation
+      - LOG_LEVEL=INFO # Standard runtime logs (recommended default for normal operation)
         # Supported levels:
-        # - DEBUG    # Most verbose (for troubleshooting)
+        # - DEBUG    # Most verbose (for troubleshooting only; may enable Flask debug mode)
         # - INFO     # Standard runtime logs (recommended default)
         # - WARNING  # Warnings and errors only
         # - ERROR    # Errors only

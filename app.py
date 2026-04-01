@@ -204,7 +204,8 @@ def get_gps():
             try:
                 data = json.loads(line)
                 if data.get("class") == "SKY":
-                    satellites = data.get("satellites", [])
+                    if "satellites" in data:
+                        satellites = data["satellites"]
                 elif data.get("class") == "TPV" and "time" in data:
                     gps_time = data.get("time")
             except json.JSONDecodeError as e:
