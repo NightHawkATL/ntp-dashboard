@@ -44,7 +44,7 @@ In order to get the most out of this app, even for the "local-only" deployment i
 The network mode must be set to "host" to allow direct access to the chrony service that is running on the host. If this is changed to "bridge" or anything else, it will not work as expected.
 
 # Resource Usage
-Usage is low running either the amd64 or the arm 64 image. Network is near 0% even if you are using the "remote" mode to access a local NTP server on your network.
+Usage is low running either the amd64 or the arm64 image. Network is near 0% even if you are using the "remote" mode to access a local NTP server on your network.
 
 arm64 (local):
 
