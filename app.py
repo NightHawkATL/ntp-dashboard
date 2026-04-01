@@ -181,7 +181,7 @@ def get_ntp():
 @app.route('/api/gps')
 def get_gps():
     config = load_config()
-    cmd = ["timeout 3 gpspipe -w -n 12 || true"]
+    cmd = ["timeout 3 gpspipe -w -n 12"]
     
     if config.get("mode") == "local":
         gps_out = run_commands_local(cmd)[0]
