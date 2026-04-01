@@ -54,11 +54,15 @@ Local GPS probing from inside the container is optional. The default build insta
 # Resource Usage
 Usage is low running either the amd64 or the arm64 image. Network is near 0% even if you are using the "remote" mode to access a local NTP server on your network.
 
-amd64:
+arm64 (local):
+
+<img width="642" height="174" alt="Docker resource usage for arm64 in local mode" src="https://github.com/user-attachments/assets/dcf957e5-81bc-4c9a-acc3-2d3562a8ce2b" />
+
+amd64 (remote):
 
 <img width="639" height="192" alt="image" src="https://github.com/user-attachments/assets/861fcf80-19ad-42c8-9b6c-35b8be6fe5c5" />
 
-arm64:
+arm64 (remote):
 
 <img width="637" height="190" alt="image" src="https://github.com/user-attachments/assets/77723948-5d21-48b5-95b4-1259a127a140" />
 
