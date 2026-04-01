@@ -48,7 +48,7 @@ Usage is low running either the amd64 or the arm64 image. Network is near 0% eve
 
 arm64 (local):
 
-<img width="642" height="174" alt="image" src="https://github.com/user-attachments/assets/dcf957e5-81bc-4c9a-acc3-2d3562a8ce2b" />
+<img width="642" height="174" alt="Docker resource usage for arm64 in local mode" src="https://github.com/user-attachments/assets/dcf957e5-81bc-4c9a-acc3-2d3562a8ce2b" />
 
 amd64 (remote):
 
