@@ -45,6 +45,14 @@ jobs:
           set -euo pipefail
           docker build --build-arg INSTALL_GPSD_CLIENTS=false -t "$LOCAL_IMAGE" .
 
+      - name: Update Grype DB
+        run: |
+          set -euo pipefail
+          mkdir -p grype-db-cache
+          docker run --rm \
+            -v "$PWD/grype-db-cache":/root/.cache/grype \
+            anchore/grype:v0.79.3 db update
+
       - name: Run Grype scans
         run: |
           set -euo pipefail
@@ -52,18 +60,21 @@ jobs:
 
           docker run --rm \
             -v "$PWD":/workspace \
+            -v "$PWD/grype-db-cache":/root/.cache/grype \
             anchore/grype:v0.79.3 \
             dir:/workspace \
             -o json > security-reports/grype-project.json
 
           docker run --rm \
             -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$PWD/grype-db-cache":/root/.cache/grype \
             anchore/grype:v0.79.3 \
             "$LOCAL_IMAGE" \
             -o json > security-reports/grype-image-local.json
 
           docker run --rm \
             -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$PWD/grype-db-cache":/root/.cache/grype \
             anchore/grype:v0.79.3 \
             "$RELEASED_IMAGE" \
             -o json > security-reports/grype-image-released.json || true
