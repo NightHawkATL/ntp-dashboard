@@ -3,7 +3,7 @@ name: Weekly Security Scan and Remediation
 on:
   schedule:
     # Wednesday 10:00 UTC (~6am ET during DST, ~5am ET during EST)
-    - cron: "0 12 * * 3"
+    - cron: "0 10 * * 3"
   workflow_dispatch:
 
 permissions:
