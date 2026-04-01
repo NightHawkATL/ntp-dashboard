@@ -50,8 +50,14 @@ jobs:
           set -euo pipefail
           mkdir -p grype-db-cache
           docker run --rm \
-            -v "$PWD/grype-db-cache":/root/.cache/grype \
+            -e GRYPE_DB_CACHE_DIR=/grype-db \
+            -v "$PWD/grype-db-cache":/grype-db \
             anchore/grype:v0.79.3 db update
+
+          docker run --rm \
+            -e GRYPE_DB_CACHE_DIR=/grype-db \
+            -v "$PWD/grype-db-cache":/grype-db \
+            anchore/grype:v0.79.3 db status
 
       - name: Run Grype scans
         run: |
@@ -59,22 +65,25 @@ jobs:
           mkdir -p security-reports
 
           docker run --rm \
+            -e GRYPE_DB_CACHE_DIR=/grype-db \
             -v "$PWD":/workspace \
-            -v "$PWD/grype-db-cache":/root/.cache/grype \
+            -v "$PWD/grype-db-cache":/grype-db \
             anchore/grype:v0.79.3 \
             dir:/workspace \
             -o json > security-reports/grype-project.json
 
           docker run --rm \
+            -e GRYPE_DB_CACHE_DIR=/grype-db \
             -v /var/run/docker.sock:/var/run/docker.sock \
-            -v "$PWD/grype-db-cache":/root/.cache/grype \
+            -v "$PWD/grype-db-cache":/grype-db \
             anchore/grype:v0.79.3 \
             "$LOCAL_IMAGE" \
             -o json > security-reports/grype-image-local.json
 
           docker run --rm \
+            -e GRYPE_DB_CACHE_DIR=/grype-db \
             -v /var/run/docker.sock:/var/run/docker.sock \
-            -v "$PWD/grype-db-cache":/root/.cache/grype \
+            -v "$PWD/grype-db-cache":/grype-db \
             anchore/grype:v0.79.3 \
             "$RELEASED_IMAGE" \
             -o json > security-reports/grype-image-released.json || true
