@@ -112,11 +112,15 @@ jobs:
 
 
           rows = []
+          aggregate = Counter()
+          aggregate_total = 0
           for filename, label in sources:
               total, counts = parse_counts(reports_dir / filename)
               row = [label, str(total)]
               row.extend(str(counts.get(level, 0)) for level in severity_order)
               rows.append(row)
+              aggregate_total += total
+              aggregate.update(counts)
 
           timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
           grype_tag = "${{ steps.grype-release.outputs.tag }}"
@@ -129,6 +133,13 @@ jobs:
               f"- Target branch scanned: {base_branch}",
               f"- Grype image tag used: {grype_tag}",
               "",
+              "## Release Notes Summary",
+              "",
+              f"- Total findings across all scans: {aggregate_total}",
+              f"- Critical findings: {aggregate.get('Critical', 0)}",
+              f"- High findings: {aggregate.get('High', 0)}",
+              f"- Medium findings: {aggregate.get('Medium', 0)}",
+              "",
               "## Vulnerability Summary",
               "",
               "| Scan Target | Total | Critical | High | Medium | Low | Negligible | Unknown |",
@@ -137,18 +148,6 @@ jobs:
 
           for row in rows:
               lines.append("| " + " | ".join(row) + " |")
-
-          lines.extend(
-              [
-                  "",
-                  "## Raw Scan Files",
-                  "",
-                  "- grype-project.json",
-                  "- grype-image-local.json",
-                  "- grype-image-released.json",
-                  "- weekly-security-report.md",
-              ]
-          )
 
           report_path = reports_dir / "weekly-security-report.md"
           report_text = "\n".join(lines) + "\n"
