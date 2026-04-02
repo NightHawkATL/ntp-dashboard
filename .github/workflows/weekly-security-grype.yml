@@ -69,32 +69,11 @@ jobs:
           set -euo pipefail
           mkdir -p security-reports
 
-          docker run --rm \
-            -e GRYPE_DB_CACHE_DIR=/grype-db \
-            -e GRYPE_DB_VALIDATE_AGE=false \
-            -v "$PWD":/workspace \
-            -v "$PWD/grype-db-cache":/grype-db \
-            "anchore/grype:${{ steps.grype-release.outputs.tag }}" \
-            dir:/workspace \
-            -o json > security-reports/grype-project.json
+          docker run --rm -e GRYPE_DB_CACHE_DIR=/grype-db -e GRYPE_DB_VALIDATE_AGE=false -v "$PWD":/workspace -v "$PWD/grype-db-cache":/grype-db "anchore/grype:${{ steps.grype-release.outputs.tag }}" dir:/workspace -o json > security-reports/grype-project.json
 
-          docker run --rm \
-            -e GRYPE_DB_CACHE_DIR=/grype-db \
-            -e GRYPE_DB_VALIDATE_AGE=false \
-            -v /var/run/docker.sock:/var/run/docker.sock \
-            -v "$PWD/grype-db-cache":/grype-db \
-            "anchore/grype:${{ steps.grype-release.outputs.tag }}" \
-            "$LOCAL_IMAGE" \
-            -o json > security-reports/grype-image-local.json
+          docker run --rm -e GRYPE_DB_CACHE_DIR=/grype-db -e GRYPE_DB_VALIDATE_AGE=false -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/grype-db-cache":/grype-db "anchore/grype:${{ steps.grype-release.outputs.tag }}" "$LOCAL_IMAGE" -o json > security-reports/grype-image-local.json
 
-          docker run --rm \
-            -e GRYPE_DB_CACHE_DIR=/grype-db \
-            -e GRYPE_DB_VALIDATE_AGE=false \
-            -v /var/run/docker.sock:/var/run/docker.sock \
-            -v "$PWD/grype-db-cache":/grype-db \
-            "anchore/grype:${{ steps.grype-release.outputs.tag }}" \
-            "$RELEASED_IMAGE" \
-            -o json > security-reports/grype-image-released.json || true
+          docker run --rm -e GRYPE_DB_CACHE_DIR=/grype-db -e GRYPE_DB_VALIDATE_AGE=false -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/grype-db-cache":/grype-db "anchore/grype:${{ steps.grype-release.outputs.tag }}" "$RELEASED_IMAGE" -o json > security-reports/grype-image-released.json || true
 
       - name: Build weekly release report
         run: |
