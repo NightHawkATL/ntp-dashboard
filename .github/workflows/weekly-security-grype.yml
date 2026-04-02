@@ -1,0 +1,193 @@
+name: Weekly Grype Security Scan
+
+on:
+  schedule:
+    # GitHub Actions schedule uses UTC cron (no timezone support).
+    # 12:00 UTC = 08:00 America/New_York during DST.
+    - cron: "0 12 * * 3"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: weekly-grype-scan-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  grype-scan:
+    runs-on: ubuntu-latest
+    env:
+      BASE_BRANCH: pre-update-release
+      LOCAL_IMAGE: ntp-dashboard:security-scan
+      RELEASED_IMAGE: ghcr.io/${{ github.repository }}:latest
+
+    steps:
+      - name: Checkout target branch
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ env.BASE_BRANCH }}
+
+      - name: Discover latest Grype release
+        id: grype-release
+        run: |
+          set -euo pipefail
+          tag="$(python -c 'import json,urllib.request; req=urllib.request.Request("https://api.github.com/repos/anchore/grype/releases/latest", headers={"Accept":"application/vnd.github+json","User-Agent":"ntp-dashboard-weekly-grype-scan"}); data=json.load(urllib.request.urlopen(req, timeout=30)); print(data["tag_name"])')"
+
+          echo "Latest Grype release: ${tag}"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+
+      - name: Pull latest Grype image
+        run: |
+          set -euo pipefail
+          docker pull "anchore/grype:${{ steps.grype-release.outputs.tag }}"
+
+      - name: Build local image for scanning
+        run: |
+          set -euo pipefail
+          docker build --build-arg INSTALL_GPSD_CLIENTS=false -t "$LOCAL_IMAGE" .
+
+      - name: Update Grype DB
+        run: |
+          set -euo pipefail
+          mkdir -p grype-db-cache
+
+          docker run --rm \
+            -e GRYPE_DB_CACHE_DIR=/grype-db \
+            -e GRYPE_DB_VALIDATE_AGE=false \
+            -v "$PWD/grype-db-cache":/grype-db \
+            "anchore/grype:${{ steps.grype-release.outputs.tag }}" db update
+
+          docker run --rm \
+            -e GRYPE_DB_CACHE_DIR=/grype-db \
+            -e GRYPE_DB_VALIDATE_AGE=false \
+            -v "$PWD/grype-db-cache":/grype-db \
+            "anchore/grype:${{ steps.grype-release.outputs.tag }}" db status
+
+      - name: Run Grype scans
+        run: |
+          set -euo pipefail
+          mkdir -p security-reports
+
+          docker run --rm \
+            -e GRYPE_DB_CACHE_DIR=/grype-db \
+            -e GRYPE_DB_VALIDATE_AGE=false \
+            -v "$PWD":/workspace \
+            -v "$PWD/grype-db-cache":/grype-db \
+            "anchore/grype:${{ steps.grype-release.outputs.tag }}" \
+            dir:/workspace \
+            --exclude /workspace/grype-db-cache \
+            --exclude /workspace/security-reports \
+            -o json > security-reports/grype-project.json
+
+          docker run --rm \
+            -e GRYPE_DB_CACHE_DIR=/grype-db \
+            -e GRYPE_DB_VALIDATE_AGE=false \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$PWD/grype-db-cache":/grype-db \
+            "anchore/grype:${{ steps.grype-release.outputs.tag }}" \
+            "$LOCAL_IMAGE" \
+            -o json > security-reports/grype-image-local.json
+
+          docker run --rm \
+            -e GRYPE_DB_CACHE_DIR=/grype-db \
+            -e GRYPE_DB_VALIDATE_AGE=false \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$PWD/grype-db-cache":/grype-db \
+            "anchore/grype:${{ steps.grype-release.outputs.tag }}" \
+            "$RELEASED_IMAGE" \
+            -o json > security-reports/grype-image-released.json || true
+
+      - name: Build weekly release report
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from collections import Counter
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          reports_dir = Path("security-reports")
+
+          sources = [
+              ("grype-project.json", "Repository source"),
+              ("grype-image-local.json", "Local image build"),
+              ("grype-image-released.json", "Latest released image"),
+          ]
+
+          severity_order = ["Critical", "High", "Medium", "Low", "Negligible", "Unknown"]
+
+
+          def parse_counts(path: Path) -> tuple[int, Counter]:
+              if not path.exists() or path.stat().st_size == 0:
+                  return 0, Counter()
+
+              with path.open("r", encoding="utf-8") as handle:
+                  data = json.load(handle)
+
+              matches = data.get("matches", [])
+              counts = Counter()
+              for match in matches:
+                  severity = match.get("vulnerability", {}).get("severity", "Unknown")
+                  counts[severity.title()] += 1
+
+              return len(matches), counts
+
+
+          rows = []
+          for filename, label in sources:
+              total, counts = parse_counts(reports_dir / filename)
+              row = [label, str(total)]
+              row.extend(str(counts.get(level, 0)) for level in severity_order)
+              rows.append(row)
+
+          timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+          grype_tag = "${{ steps.grype-release.outputs.tag }}"
+          base_branch = "${{ env.BASE_BRANCH }}"
+
+          lines = [
+              "# Weekly Security Scan Report",
+              "",
+              f"- Generated: {timestamp}",
+              f"- Target branch scanned: {base_branch}",
+              f"- Grype image tag used: {grype_tag}",
+              "",
+              "## Vulnerability Summary",
+              "",
+              "| Scan Target | Total | Critical | High | Medium | Low | Negligible | Unknown |",
+              "|---|---:|---:|---:|---:|---:|---:|---:|",
+          ]
+
+          for row in rows:
+              lines.append("| " + " | ".join(row) + " |")
+
+          lines.extend(
+              [
+                  "",
+                  "## Raw Scan Files",
+                  "",
+                  "- grype-project.json",
+                  "- grype-image-local.json",
+                  "- grype-image-released.json",
+                  "- weekly-security-report.md",
+              ]
+          )
+
+          report_path = reports_dir / "weekly-security-report.md"
+          report_text = "\n".join(lines) + "\n"
+          report_path.write_text(report_text, encoding="utf-8")
+
+          summary_path = Path(".weekly-security-summary.md")
+          summary_path.write_text(report_text, encoding="utf-8")
+          PY
+
+      - name: Publish workflow summary
+        run: |
+          set -euo pipefail
+          cat .weekly-security-summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload scan artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: weekly-security-reports
+          path: security-reports/
