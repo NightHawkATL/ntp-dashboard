@@ -3,7 +3,7 @@ const ASSETS_TO_CACHE =[
     '/',
     '/static/tailwindcss.js',
     '/static/dashboard.js',
-    '/static/images/logo.png',
+    '/static/images/ntp-dashboard-logo.png',
     '/manifest.json'
 ];
 
