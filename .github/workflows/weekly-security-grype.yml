@@ -76,8 +76,6 @@ jobs:
             -v "$PWD/grype-db-cache":/grype-db \
             "anchore/grype:${{ steps.grype-release.outputs.tag }}" \
             dir:/workspace \
-            # --exclude /workspace/grype-db-cache \
-            # --exclude /workspace/security-reports \
             -o json > security-reports/grype-project.json
 
           docker run --rm \
@@ -191,3 +189,4 @@ jobs:
         with:
           name: weekly-security-reports
           path: security-reports/
+
