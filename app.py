@@ -137,6 +137,18 @@ def manifest():
 def service_worker():
     return send_from_directory('static', 'sw.js', mimetype='application/javascript')
 
+@app.after_request
+def set_cache_headers(response):
+    if request.path.startswith('/api/'):
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+    elif request.path in ('/sw.js', '/manifest.json'):
+        response.headers['Cache-Control'] = 'no-cache, max-age=0, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+    return response
+
 # --- API Routes ---
 @app.route('/')
 def index(): 
