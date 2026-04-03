@@ -12,9 +12,8 @@ self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME).then(cache => {
             return cache.addAll(ASSETS_TO_CACHE);
-        })
+        }).then(() => self.skipWaiting())
     );
-    self.skipWaiting();
 });
 
 // Activate event: remove old caches so users receive updated JS/HTML assets
