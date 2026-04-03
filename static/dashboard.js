@@ -135,7 +135,7 @@ document.getElementById('configForm').addEventListener('submit', async (e) => {
         // 4. NTP Data Polling (2 Seconds)
         async function fetchNTP() {
             try {
-                const res = await fetch('/api/ntp');
+                const res = await fetch('/api/ntp', { cache: 'no-store' });
                 const d = await res.json();
                 
                 const offsetEl = document.getElementById('sysOffset');
@@ -168,7 +168,7 @@ document.getElementById('configForm').addEventListener('submit', async (e) => {
         let sweepTimer = 30;
         async function fetchGPS() {
             try {
-                const res = await fetch('/api/gps');
+                const res = await fetch('/api/gps', { cache: 'no-store' });
                 const d = await res.json();
                 const satTableBody = document.getElementById('satTableBody');
                 const satCountEl = document.getElementById('satCount');
@@ -242,6 +242,11 @@ document.getElementById('configForm').addEventListener('submit', async (e) => {
                 
             } catch(e) {
                 console.error("GPS Fetch Failed", e);
+                baseGpsTimeMs = null;
+                document.getElementById('gpsTimeDisplay').innerText = 'GPS unavailable';
+                document.getElementById('satellitesLayer').innerHTML = '';
+                document.getElementById('satTableBody').innerHTML = '<tr><td colspan="5" class="p-4 text-red-500">Failed to communicate with API.</td></tr>';
+                document.getElementById('satCount').innerText = 'Unavailable';
             }
         }
 
@@ -340,11 +345,42 @@ function renderClientsTable() {
         }, 1000);
 
         // 7. Initialize
+        let ntpIntervalId = null;
+        let gpsIntervalId = null;
+
+        function startPolling() {
+            if (ntpIntervalId === null) {
+                ntpIntervalId = setInterval(fetchNTP, 2000);
+            }
+            if (gpsIntervalId === null) {
+                gpsIntervalId = setInterval(fetchGPS, 30000);
+            }
+        }
+
+        function refreshNow() {
+            fetchNTP();
+            fetchGPS();
+        }
+
         loadUI();
-        fetchNTP();
-        fetchGPS();
-        setInterval(fetchNTP, 2000);
-        setInterval(fetchGPS, 30000);
+        refreshNow();
+        startPolling();
+
+        // Force fresh data when the tab becomes active again.
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                refreshNow();
+                startPolling();
+            }
+        });
+
+        window.addEventListener('focus', refreshNow);
+        window.addEventListener('pageshow', (event) => {
+            if (event.persisted) {
+                refreshNow();
+            }
+        });
+        window.addEventListener('online', refreshNow);
        
         // 9. Register PWA Service Worker
         if ('serviceWorker' in navigator) {
