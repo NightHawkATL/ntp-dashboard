@@ -18,12 +18,12 @@ self.addEventListener('install', event => {
 
 // Activate event: remove old caches so users receive updated JS/HTML assets
 self.addEventListener('activate', event => {
-    event.waitUntil(
+    event.waitUntil(Promise.all([
         caches.keys().then(keys => Promise.all(
             keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
-        ))
-    );
-    self.clients.claim();
+        )),
+        self.clients.claim()
+    ]));
 });
 
 // Fetch event: Serve cached files, but ALWAYS fetch fresh data from the API
