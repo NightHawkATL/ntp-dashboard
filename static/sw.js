@@ -36,7 +36,7 @@ self.addEventListener('fetch', event => {
     // For navigations (HTML), prefer network so UI/JS updates arrive quickly.
     if (event.request.mode === 'navigate') {
         event.respondWith(
-            fetch(event.request).catch(() => caches.match('/'))
+            fetch(new Request(event.request, { cache: 'no-store' })).catch(() => caches.match('/'))
         );
         return;
     }
