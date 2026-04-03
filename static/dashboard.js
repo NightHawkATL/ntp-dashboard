@@ -357,7 +357,13 @@ function renderClientsTable() {
             }
         }
 
+        let lastRefreshTime = 0;
+        const REFRESH_DEBOUNCE_MS = 1000;
+
         function refreshNow() {
+            const now = Date.now();
+            if (now - lastRefreshTime < REFRESH_DEBOUNCE_MS) return;
+            lastRefreshTime = now;
             fetchNTP();
             fetchGPS();
         }
