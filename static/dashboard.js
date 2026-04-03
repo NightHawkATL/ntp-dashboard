@@ -135,7 +135,7 @@ document.getElementById('configForm').addEventListener('submit', async (e) => {
         // 4. NTP Data Polling (2 Seconds)
         async function fetchNTP() {
             try {
-                const res = await fetch('/api/ntp');
+                const res = await fetch('/api/ntp', { cache: 'no-store' });
                 const d = await res.json();
                 
                 const offsetEl = document.getElementById('sysOffset');
@@ -168,8 +168,28 @@ document.getElementById('configForm').addEventListener('submit', async (e) => {
         let sweepTimer = 30;
         async function fetchGPS() {
             try {
-                const res = await fetch('/api/gps');
+                const res = await fetch('/api/gps', { cache: 'no-store' });
                 const d = await res.json();
+                const satTableBody = document.getElementById('satTableBody');
+                const satCountEl = document.getElementById('satCount');
+
+                if (d.error) {
+                    baseGpsTimeMs = null;
+                    document.getElementById('gpsTimeDisplay').innerText = d.gps_time || 'GPS unavailable';
+                    document.getElementById('satellitesLayer').innerHTML = '';
+                    // Render error as plain text to avoid HTML/script injection
+                    satTableBody.innerHTML = '';
+                    const errorRow = document.createElement('tr');
+                    const errorCell = document.createElement('td');
+                    errorCell.colSpan = 5;
+                    errorCell.className = 'p-4 text-red-500 whitespace-pre-wrap';
+                    errorCell.textContent = d.error;
+                    errorRow.appendChild(errorCell);
+                    satTableBody.appendChild(errorRow);
+                    satCountEl.innerText = 'Unavailable';
+                    sweepTimer = 30;
+                    return;
+                }
                 
                 // --- CAPTURE THE RAW GPS TIME FOR THE LIVE TICKER ---
                 if (d.gps_time && d.gps_time.includes('T')) {
@@ -216,12 +236,17 @@ document.getElementById('configForm').addEventListener('submit', async (e) => {
                 }
 
                 document.getElementById('satellitesLayer').innerHTML = svgContent;
-                document.getElementById('satTableBody').innerHTML = tableHtml;
-                document.getElementById('satCount').innerText = lockedCount + ' Locked';
+                satTableBody.innerHTML = tableHtml;
+                satCountEl.innerText = lockedCount + ' Locked';
                 sweepTimer = 30;
                 
             } catch(e) {
                 console.error("GPS Fetch Failed", e);
+                baseGpsTimeMs = null;
+                document.getElementById('gpsTimeDisplay').innerText = 'GPS unavailable';
+                document.getElementById('satellitesLayer').innerHTML = '';
+                document.getElementById('satTableBody').innerHTML = '<tr><td colspan="5" class="p-4 text-red-500">Failed to communicate with API.</td></tr>';
+                document.getElementById('satCount').innerText = 'Unavailable';
             }
         }
 
@@ -320,11 +345,48 @@ function renderClientsTable() {
         }, 1000);
 
         // 7. Initialize
+        let ntpIntervalId = null;
+        let gpsIntervalId = null;
+
+        function startPolling() {
+            if (ntpIntervalId === null) {
+                ntpIntervalId = setInterval(fetchNTP, 2000);
+            }
+            if (gpsIntervalId === null) {
+                gpsIntervalId = setInterval(fetchGPS, 30000);
+            }
+        }
+
+        let lastRefreshTime = 0;
+        const REFRESH_DEBOUNCE_MS = 1000;
+
+        function refreshNow() {
+            const now = Date.now();
+            if (now - lastRefreshTime < REFRESH_DEBOUNCE_MS) return;
+            lastRefreshTime = now;
+            fetchNTP();
+            fetchGPS();
+        }
+
         loadUI();
-        fetchNTP();
-        fetchGPS();
-        setInterval(fetchNTP, 2000);
-        setInterval(fetchGPS, 30000);
+        refreshNow();
+        startPolling();
+
+        // Force fresh data when the tab becomes active again.
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                refreshNow();
+                startPolling();
+            }
+        });
+
+        window.addEventListener('focus', refreshNow);
+        window.addEventListener('pageshow', (event) => {
+            if (event.persisted) {
+                refreshNow();
+            }
+        });
+        window.addEventListener('online', refreshNow);
        
         // 9. Register PWA Service Worker
         if ('serviceWorker' in navigator) {
