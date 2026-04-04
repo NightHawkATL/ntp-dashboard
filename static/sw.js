@@ -64,17 +64,18 @@ self.addEventListener('fetch', event => {
     if (url.pathname.startsWith('/static/') || url.pathname === '/manifest.json') {
         event.respondWith(
             caches.match(event.request).then(cached => {
-                const networkFetch = fetch(event.request)
+                const networkFetch = fetch(event.request);
+                const cacheUpdate = networkFetch
                     .then(response => {
                         if (response && response.ok) {
                             const responseCopy = response.clone();
-                            caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseCopy));
+                            return caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseCopy));
                         }
-                        return response;
-                    })
-                    .catch(() => cached);
+                    });
 
-                return cached || networkFetch;
+                event.waitUntil(cacheUpdate.catch(() => {}));
+
+                return cached || networkFetch.catch(() => cached);
             })
         );
         return;
