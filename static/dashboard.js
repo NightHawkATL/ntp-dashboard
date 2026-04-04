@@ -391,8 +391,40 @@ function renderClientsTable() {
         // 9. Register PWA Service Worker
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
+                // Capture whether a controller already exists before registering,
+                // so controllerchange only triggers a reload when upgrading (not on first install).
+                const hadController = !!navigator.serviceWorker.controller;
+
+                let isRefreshing = false;
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    if (isRefreshing || !hadController) {
+                        return;
+                    }
+                    isRefreshing = true;
+                    window.location.reload();
+                });
+
                 navigator.serviceWorker.register('/sw.js')
-                    .then(reg => console.log('PWA Service Worker Registered!', reg.scope))
+                    .then(reg => {
+                        console.log('PWA Service Worker Registered!', reg.scope);
+
+                        if (reg.waiting) {
+                            reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+                        }
+
+                        reg.addEventListener('updatefound', () => {
+                            const newWorker = reg.installing;
+                            if (!newWorker) {
+                                return;
+                            }
+
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    newWorker.postMessage({ type: 'SKIP_WAITING' });
+                                }
+                            });
+                        });
+                    })
                     .catch(err => console.error('PWA Registration Failed!', err));
             });
         }
