@@ -272,10 +272,7 @@ def get_clients():
 
     err = out if ("Error" in out or "command not found" in out.lower() or "501 Not authorised" in out) else None
     if err and "501 Not authorised" in err:
-        err = (
-            "Chrony denied the clients command (501 Not authorised). "
-            "Allow command access from this host (cmdallow) or configure chronyc command key auth."
-        )
+        err = "If Clients shows 501 Not authorised, allow chronyd command access for the dashboard host/container (cmdallow) or configure chronyc key authentication for -k mode."
     if err:
         log.warning('Clients API returned error in %s mode: %s', config.get('mode'), err)
     return jsonify({"clients": clients, "error": err})
