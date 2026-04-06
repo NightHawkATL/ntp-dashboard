@@ -235,12 +235,26 @@ def get_clients():
     config = load_config()
 
     if config.get("mode") == "local":
-        out = run_commands_local(["chronyc -N clients -k"])[0]
-        # Some chronyd setups reject authenticated command mode in containers.
-        if "501 Not authorised" in out:
-            fallback_out = run_commands_local(["chronyc -N clients"])[0]
-            if not fallback_out.startswith("Error:"):
-                out = fallback_out
+        # Try progressively less strict command paths, including sudo, for hosts
+        # where chronyc command authorization behaves differently.
+        attempts = [
+            "chronyc -N clients -k",
+            "chronyc -N clients",
+            "sudo -n chronyc -N clients -k",
+            "sudo -n chronyc -N clients",
+        ]
+        out = ""
+        for cmd in attempts:
+            candidate = run_commands_local([cmd])[0]
+            out = candidate
+            if not candidate:
+                continue
+            lower_candidate = candidate.lower()
+            if "501 not authorised" in lower_candidate:
+                continue
+            if candidate.startswith("Error:") or "command not found" in lower_candidate:
+                continue
+            break
     else:
         out = run_commands_remote(["sudo chronyc -N clients -k"], config)[0]
         if "501 Not authorised" in out:
@@ -272,7 +286,7 @@ def get_clients():
 
     err = out if ("Error" in out or "command not found" in out.lower() or "501 Not authorised" in out) else None
     if err and "501 Not authorised" in err:
-        err = "If Clients shows 501 Not authorised, allow chronyd command access for the dashboard host/container (cmdallow) or configure chronyc key authentication for -k mode."
+        err = "Clients query not authorised (501), including fallback attempts. Configure chronyd cmdallow for the dashboard host/container or set up chronyc key auth for -k mode."
     if err:
         log.warning('Clients API returned error in %s mode: %s', config.get('mode'), err)
     return jsonify({"clients": clients, "error": err})
