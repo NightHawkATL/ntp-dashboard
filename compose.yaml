@@ -18,4 +18,6 @@ services:
         # - CRITICAL # Critical failures only
     volumes:
       - ./data:/app/data # Persists UI settings
+      - /run/chrony:/run/chrony # Needed for local-only deployments to access chrony correctly and gather data
+      - /var/run/chrony:/var/run/chrony # Needed for local-only deployments to access chrony correctly and gather data
     restart: unless-stopped
