@@ -5,7 +5,7 @@ WORKDIR /app
 # 1. Install the default local runtime tools
 ARG INSTALL_GPSD_CLIENTS=false
 RUN set -eux; \
-	apk add --no-cache chrony "zlib>=1.3.2-r0"; \
+	apk add --no-cache chrony; \
 	if [ "$INSTALL_GPSD_CLIENTS" = "true" ]; then \
 		apk add --no-cache gpsd-clients; \
 	fi
