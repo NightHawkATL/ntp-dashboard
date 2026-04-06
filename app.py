@@ -233,15 +233,21 @@ def get_gps():
 @app.route('/api/clients')
 def get_clients():
     config = load_config()
-    
+
     if config.get("mode") == "local":
-        cmd = ["chronyc -N clients -k"]
-        outs = run_commands_local(cmd)
+        out = run_commands_local(["chronyc -N clients -k"])[0]
+        # Some chronyd setups reject authenticated command mode in containers.
+        if "501 Not authorised" in out:
+            fallback_out = run_commands_local(["chronyc -N clients"])[0]
+            if not fallback_out.startswith("Error:"):
+                out = fallback_out
     else:
-        cmd =["sudo chronyc -N clients -k"]
-        outs = run_commands_remote(cmd, config)
-        
-    out = outs[0]
+        out = run_commands_remote(["sudo chronyc -N clients -k"], config)[0]
+        if "501 Not authorised" in out:
+            fallback_out = run_commands_remote(["sudo chronyc -N clients"], config)[0]
+            if not fallback_out.startswith("Error:"):
+                out = fallback_out
+
     clients =[]
     
     if out and "Error" not in out and "command not found" not in out.lower():
@@ -263,8 +269,13 @@ def get_clients():
                         "ntp_drops": parts[2],
                         "last_seen": parts[5]
                     })
-                    
-    err = out if ("Error" in out or "command not found" in out.lower()) else None
+
+    err = out if ("Error" in out or "command not found" in out.lower() or "501 Not authorised" in out) else None
+    if err and "501 Not authorised" in err:
+        err = (
+            "Chrony denied the clients command (501 Not authorised). "
+            "Allow command access from this host (cmdallow) or configure chronyc command key auth."
+        )
     if err:
         log.warning('Clients API returned error in %s mode: %s', config.get('mode'), err)
     return jsonify({"clients": clients, "error": err})
