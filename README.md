@@ -43,7 +43,6 @@ services:
     volumes:
       - ./data:/app/data ## Bind mounts are suggested to have easy-access to the data files.
       - /run/chrony:/run/chrony # Needed for local-only deployments to access chrony correctly and gather data
-      - /var/run/chrony:/var/run/chrony # Needed for local-only deployments to access chrony correctly and gather data
     restart: unless-stopped ## Typical deployment unless you wish to change this.
 ```
 # Prerequisites
