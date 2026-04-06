@@ -257,7 +257,7 @@ def get_clients():
             break
     else:
         out = run_commands_remote(["sudo chronyc -N clients -k"], config)[0]
-        if "501 Not authorised" in out:
+        if "501 not authorised" in out.lower():
             fallback_out = run_commands_remote(["sudo chronyc -N clients"], config)[0]
             if not fallback_out.startswith("Error:"):
                 out = fallback_out
@@ -284,8 +284,8 @@ def get_clients():
                         "last_seen": parts[5]
                     })
 
-    err = out if ("Error" in out or "command not found" in out.lower() or "501 Not authorised" in out) else None
-    if err and "501 Not authorised" in err:
+    err = out if ("Error" in out or "command not found" in out.lower() or "501 not authorised" in out.lower()) else None
+    if err and "501 not authorised" in err.lower():
         err = "Clients query not authorised (501), including fallback attempts. Configure chronyd cmdallow for the dashboard host/container or set up chronyc key auth for -k mode."
     if err:
         log.warning('Clients API returned error in %s mode: %s', config.get('mode'), err)
