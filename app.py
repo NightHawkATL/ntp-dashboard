@@ -258,7 +258,7 @@ def get_clients():
         out = run_commands_remote(["sudo chronyc -N clients -k"], config)[0]
         if "501 not authorised" in out.lower():
             fallback_out = run_commands_remote(["sudo chronyc -N clients"], config)[0]
-            if not fallback_out.startswith("Error:"):
+            if fallback_out and not fallback_out.startswith("Error:"):
                 out = fallback_out
 
     clients =[]
