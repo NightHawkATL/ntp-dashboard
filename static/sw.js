@@ -88,7 +88,13 @@ self.addEventListener('fetch', event => {
     // Fallback strategy for any other same-origin GET request.
     event.respondWith(
         fetch(event.request).catch(() => {
-            return caches.match(event.request);
+            return caches.match(event.request).then(cachedResponse => {
+                if (cachedResponse) {
+                    return cachedResponse;
+                }
+
+                throw new Error('Network request failed and no cached response was available.');
+            });
         })
     );
 });
