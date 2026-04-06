@@ -235,13 +235,12 @@ def get_clients():
     config = load_config()
 
     if config.get("mode") == "local":
-        # Try progressively less strict command paths, including sudo, for hosts
-        # where chronyc command authorization behaves differently.
+        # Prefer explicit localhost queries first for local deployments.
         attempts = [
+            "chronyc -h 127.0.0.1 -N clients -k",
+            "chronyc -h 127.0.0.1 -N clients",
             "chronyc -N clients -k",
             "chronyc -N clients",
-            "sudo -n chronyc -N clients -k",
-            "sudo -n chronyc -N clients",
         ]
         out = ""
         for cmd in attempts:
@@ -286,7 +285,11 @@ def get_clients():
 
     err = out if ("Error" in out or "command not found" in out.lower() or "501 not authorised" in out.lower()) else None
     if err and "501 not authorised" in err.lower():
-        err = "Clients query not authorised (501), including fallback attempts. Configure chronyd cmdallow for the dashboard host/container or set up chronyc key auth for -k mode."
+        err = (
+            "Clients query not authorised (501). Configure chronyd cmdallow for the dashboard host/container "
+            "or set up chronyc key auth for -k mode. See: "
+            "https://github.com/NightHawkATL/ntp-dashboard/wiki/Client-list-501-error"
+        )
     if err:
         log.warning('Clients API returned error in %s mode: %s', config.get('mode'), err)
     return jsonify({"clients": clients, "error": err})
