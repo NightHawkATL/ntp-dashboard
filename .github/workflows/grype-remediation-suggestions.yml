@@ -37,6 +37,7 @@ jobs:
             echo "id=${{ github.event.workflow_run.id }}" >> "$GITHUB_OUTPUT"
           else
             python - <<'PY'
+            import datetime
             import json
             import os
             import urllib.parse
@@ -68,17 +69,32 @@ jobs:
             if workflow_id is None:
                 raise SystemExit(f"Workflow not found: {workflow_name}")
 
-            params = urllib.parse.urlencode({
-                "status": "success",
-                "branch": branch,
-                "per_page": 1,
-            })
-            runs_url = f"https://api.github.com/repos/{repo}/actions/workflows/{workflow_id}/runs?{params}"
-            runs_req = urllib.request.Request(runs_url, headers=headers)
-            with urllib.request.urlopen(runs_req, timeout=30) as resp:
-                runs = json.loads(resp.read().decode("utf-8"))
+            def fetch_runs(extra_params=None):
+                params = {
+                    "status": "success",
+                    "branch": branch,
+                    "per_page": 1,
+                }
+                if extra_params:
+                    params.update(extra_params)
+                runs_url = (
+                    f"https://api.github.com/repos/{repo}/actions/workflows/"
+                    f"{workflow_id}/runs?{urllib.parse.urlencode(params)}"
+                )
+                runs_req = urllib.request.Request(runs_url, headers=headers)
+                with urllib.request.urlopen(runs_req, timeout=30) as resp:
+                    return json.loads(resp.read().decode("utf-8")).get("workflow_runs", [])
 
-            workflow_runs = runs.get("workflow_runs", [])
+            # Prefer a scan that completed within the last 7 days (same-week window).
+            now = datetime.datetime.now(datetime.timezone.utc)
+            week_ago = now - datetime.timedelta(days=7)
+            created_filter = f">={week_ago.strftime('%Y-%m-%dT%H:%M:%SZ')}"
+
+            workflow_runs = fetch_runs({"created": created_filter})
+            if not workflow_runs:
+                # Fall back to the most recent successful run if none found this week.
+                workflow_runs = fetch_runs()
+
             if not workflow_runs:
                 raise SystemExit(
                     f"No successful runs found for workflow '{workflow_name}' on branch '{branch}'"
