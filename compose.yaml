@@ -18,4 +18,5 @@ services:
         # - CRITICAL # Critical failures only
     volumes:
       - ./data:/app/data # Persists UI settings
+      - /run/chrony:/run/chrony # Expected host chrony path; /var/run/chrony is typically a symlink to /run/chrony
     restart: unless-stopped

@@ -1,45 +1,37 @@
-# To get started with Dependabot version updates, you'll need to specify which
-# package ecosystems to update and where the package manifests are located.
-# Please see the documentation for all configuration options:
-# https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
-
 version: 2
 updates:
-  # 1. Python dependencies
   - package-ecosystem: "pip"
     directory: "/"
-    target-branch: "pre-update-release"   # <--- CHANGE THIS TO YOUR ACTUAL BRANCH NAME
+    target-branch: "pre-update-release"
     schedule:
       interval: "weekly"
-      day: "wednesday"          # Options: monday, tuesday, etc.
-      time: "06:00"          # 24-hour format (HH:MM)
-      timezone: "America/New_York" # Your local timezone
+      day: "wednesday"
+      time: "09:30"
+      timezone: "America/New_York"
     labels:
       - "dependencies"
       - "python"
 
-  # 2. Docker base images
   - package-ecosystem: "docker"
     directory: "/"
-    target-branch: "pre-update-release"   # <--- CHANGE THIS TO YOUR ACTUAL BRANCH NAME
+    target-branch: "pre-update-release"
     schedule:
       interval: "weekly"
-      day: "wednesday"          # Options: monday, tuesday, etc.
-      time: "06:00"          # 24-hour format (HH:MM)
-      timezone: "America/New_York" # Your local timezone
+      day: "wednesday"
+      time: "09:30"
+      timezone: "America/New_York"
     labels:
       - "dependencies"
       - "docker"
 
-  # 3. GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
-    target-branch: "pre-update-release"   # <--- CHANGE THIS TO YOUR ACTUAL BRANCH NAME
+    target-branch: "pre-update-release"
     schedule:
       interval: "weekly"
-      day: "wednesday"          # Options: monday, tuesday, etc.
-      time: "06:00"          # 24-hour format (HH:MM)
-      timezone: "America/New_York" # Your local timezone
+      day: "wednesday"
+      time: "09:30"
+      timezone: "America/New_York"
     labels:
       - "dependencies"
       - "github-actions"

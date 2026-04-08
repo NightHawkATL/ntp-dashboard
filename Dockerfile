@@ -1,4 +1,4 @@
-FROM python:3.14-alpine
+FROM python:3.14-alpine3.21
 
 WORKDIR /app
 
@@ -15,7 +15,8 @@ RUN mkdir -p /app/static && wget -q https://cdn.tailwindcss.com/ -O /app/static/
 
 # 3. Install Python requirements
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade "pip==26.0.1" \
+	&& pip install --no-cache-dir -r requirements.txt
 
 # 4. Copy the app files (.dockerignore will block the junk automatically)
 COPY . .
