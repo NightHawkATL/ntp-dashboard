@@ -87,7 +87,7 @@ Please check the [wiki](https://github.com/NightHawkATL/ntp-dashboard/wiki).
 
 # Security
 
-Please review the Security Policy for guidance on reporting vulnerabilities and checking remediation status.
+Please review the [Security Policy](https://github.com/NightHawkATL/ntp-dashboard/blob/main/SECURITY.md) for guidance on reporting vulnerabilities and checking remediation status.
 
 # Disclaimer
 **This is a current work in progress. It was coded with the help of AI to get the base project running with my ideas.**
