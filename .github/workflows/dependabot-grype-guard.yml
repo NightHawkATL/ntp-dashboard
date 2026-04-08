@@ -7,7 +7,6 @@ name: Dependabot Grype Guard
 
 permissions:
   contents: read
-  pull-requests: write
 
 jobs:
   grype-guard:
@@ -118,6 +117,27 @@ jobs:
                       bucket.add(v)
               return {k: sorted(v) for k, v in sorted(recs.items())}
 
+          def fixed_high_critical_recommendations(doc):
+              high_critical = {"High", "Critical"}
+              recs = {}
+              for m in doc.get("matches", []):
+                  vuln = m.get("vulnerability", {})
+                  sev = vuln.get("severity", "Unknown").title()
+                  if sev not in high_critical:
+                      continue
+                  fix = vuln.get("fix", {}) or {}
+                  if fix.get("state") != "fixed":
+                      continue
+                  artifact = m.get("artifact", {})
+                  pkg = artifact.get("name", "unknown")
+                  versions = tuple(fix.get("versions", []))
+                  if not versions:
+                      continue
+                  bucket = recs.setdefault(pkg, set())
+                  for v in versions:
+                      bucket.add(v)
+              return {k: sorted(v) for k, v in sorted(recs.items())}
+
           def vulnerable_pkg_versions(doc):
               pkgs = {}
               for m in doc.get("matches", []):
@@ -135,6 +155,9 @@ jobs:
           pr_counts = counts(pr)
           base_pkgs = vulnerable_pkg_versions(base)
           pr_pkgs = vulnerable_pkg_versions(pr)
+
+          recs = fixed_recommendations(pr)
+          high_critical_recs = fixed_high_critical_recommendations(pr)
 
           summary_lines = [
               "## Dependabot Grype Guard",
@@ -160,13 +183,10 @@ jobs:
               if before != after:
                   changed_vulnerable_pkgs.append(pkg)
 
-          underfixed_updates = []
-          for pkg in changed_vulnerable_pkgs:
-              if pkg not in recs:
-                  continue
-              severities = pr_pkgs.get(pkg, {}).get("severities", set())
-              if "High" in severities or "Critical" in severities:
-                  underfixed_updates.append(pkg)
+          underfixed_updates = [
+              pkg for pkg in changed_vulnerable_pkgs
+              if pkg in high_critical_recs
+          ]
 
           if changed_vulnerable_pkgs:
               summary_lines.extend(["", "### Vulnerable packages changed by this PR"])
