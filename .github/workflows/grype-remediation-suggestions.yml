@@ -9,8 +9,8 @@ on:
   workflow_dispatch:
     inputs:
       run_id:
-        description: Optional workflow run ID to process
-        required: false
+        description: Workflow run ID from Weekly Grype Security Scan to process
+        required: true
         type: string
 
 permissions:
