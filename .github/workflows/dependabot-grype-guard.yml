@@ -1,0 +1,198 @@
+name: Dependabot Grype Guard
+
+"on":
+  pull_request:
+    branches:
+      - pre-update-release
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  grype-guard:
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_PR: ntp-dashboard:dependabot-pr
+      IMAGE_BASE: ntp-dashboard:dependabot-base
+
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v6
+        with:
+          path: pr
+
+      - name: Checkout base commit
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: base
+
+      - name: Discover latest Grype release
+        id: grype-release
+        run: |
+          set -euo pipefail
+          tag="$(python -c 'import json,urllib.request; req=urllib.request.Request("https://api.github.com/repos/anchore/grype/releases/latest", headers={"Accept":"application/vnd.github+json","User-Agent":"ntp-dashboard-dependabot-grype-guard"}); data=json.load(urllib.request.urlopen(req, timeout=30)); print(data["tag_name"])')"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+
+      - name: Pull latest Grype image
+        run: |
+          set -euo pipefail
+          docker pull "anchore/grype:${{ steps.grype-release.outputs.tag }}"
+
+      - name: Build PR and base images
+        run: |
+          set -euo pipefail
+          docker build --build-arg INSTALL_GPSD_CLIENTS=false -t "$IMAGE_PR" ./pr
+          docker build --build-arg INSTALL_GPSD_CLIENTS=false -t "$IMAGE_BASE" ./base
+
+      - name: Update Grype DB
+        run: |
+          set -euo pipefail
+          mkdir -p grype-db-cache security-reports
+
+          docker run --rm \
+            -e GRYPE_DB_CACHE_DIR=/grype-db \
+            -e GRYPE_DB_VALIDATE_AGE=false \
+            -v "$PWD/grype-db-cache":/grype-db \
+            "anchore/grype:${{ steps.grype-release.outputs.tag }}" db update
+
+      - name: Scan base and PR images
+        run: |
+          set -euo pipefail
+
+          docker run --rm \
+            -e GRYPE_DB_CACHE_DIR=/grype-db \
+            -e GRYPE_DB_VALIDATE_AGE=false \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$PWD/grype-db-cache":/grype-db \
+            "anchore/grype:${{ steps.grype-release.outputs.tag }}" \
+            "$IMAGE_BASE" \
+            -o json > security-reports/grype-base.json
+
+          docker run --rm \
+            -e GRYPE_DB_CACHE_DIR=/grype-db \
+            -e GRYPE_DB_VALIDATE_AGE=false \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$PWD/grype-db-cache":/grype-db \
+            "anchore/grype:${{ steps.grype-release.outputs.tag }}" \
+            "$IMAGE_PR" \
+            -o json > security-reports/grype-pr.json
+
+      - name: Compare scan results and enforce regression gate
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          from collections import Counter
+          from pathlib import Path
+
+          base = json.loads(Path("security-reports/grype-base.json").read_text(encoding="utf-8"))
+          pr = json.loads(Path("security-reports/grype-pr.json").read_text(encoding="utf-8"))
+
+          levels = ["Critical", "High", "Medium", "Low", "Negligible", "Unknown"]
+
+          def counts(doc):
+              c = Counter()
+              for m in doc.get("matches", []):
+                  sev = m.get("vulnerability", {}).get("severity", "Unknown").title()
+                  c[sev] += 1
+              return c
+
+          def fixed_recommendations(doc):
+              recs = {}
+              for m in doc.get("matches", []):
+                  vuln = m.get("vulnerability", {})
+                  fix = vuln.get("fix", {}) or {}
+                  if fix.get("state") != "fixed":
+                      continue
+                  artifact = m.get("artifact", {})
+                  pkg = artifact.get("name", "unknown")
+                  versions = tuple(fix.get("versions", []))
+                  if not versions:
+                      continue
+                  bucket = recs.setdefault(pkg, set())
+                  for v in versions:
+                      bucket.add(v)
+              return {k: sorted(v) for k, v in sorted(recs.items())}
+
+          def vulnerable_pkg_versions(doc):
+              pkgs = {}
+              for m in doc.get("matches", []):
+                  vuln = m.get("vulnerability", {})
+                  sev = vuln.get("severity", "Unknown").title()
+                  artifact = m.get("artifact", {})
+                  pkg = artifact.get("name", "unknown")
+                  version = artifact.get("version", "unknown")
+                  bucket = pkgs.setdefault(pkg, {"versions": set(), "severities": set()})
+                  bucket["versions"].add(version)
+                  bucket["severities"].add(sev)
+              return pkgs
+
+          base_counts = counts(base)
+          pr_counts = counts(pr)
+          base_pkgs = vulnerable_pkg_versions(base)
+          pr_pkgs = vulnerable_pkg_versions(pr)
+
+          summary_lines = [
+              "## Dependabot Grype Guard",
+              "",
+              "| Severity | Base | PR | Delta |",
+              "|---|---:|---:|---:|",
+          ]
+          for lvl in levels:
+              b = base_counts.get(lvl, 0)
+              p = pr_counts.get(lvl, 0)
+              summary_lines.append(f"| {lvl} | {b} | {p} | {p - b:+d} |")
+
+          recs = fixed_recommendations(pr)
+          if recs:
+              summary_lines.extend(["", "### Fixable package recommendations from PR image"])
+              for pkg, versions in recs.items():
+                  summary_lines.append(f"- {pkg}: {', '.join(versions)}")
+
+          changed_vulnerable_pkgs = []
+          for pkg in sorted(set(base_pkgs) | set(pr_pkgs)):
+              before = sorted(base_pkgs.get(pkg, {}).get("versions", set()))
+              after = sorted(pr_pkgs.get(pkg, {}).get("versions", set()))
+              if before != after:
+                  changed_vulnerable_pkgs.append(pkg)
+
+          underfixed_updates = []
+          for pkg in changed_vulnerable_pkgs:
+              if pkg not in recs:
+                  continue
+              severities = pr_pkgs.get(pkg, {}).get("severities", set())
+              if "High" in severities or "Critical" in severities:
+                  underfixed_updates.append(pkg)
+
+          if changed_vulnerable_pkgs:
+              summary_lines.extend(["", "### Vulnerable packages changed by this PR"])
+              for pkg in changed_vulnerable_pkgs:
+                  before = ", ".join(sorted(base_pkgs.get(pkg, {}).get("versions", set()))) or "none"
+                  after = ", ".join(sorted(pr_pkgs.get(pkg, {}).get("versions", set()))) or "none"
+                  summary_lines.append(f"- {pkg}: {before} -> {after}")
+
+          summary = "\n".join(summary_lines) + "\n"
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
+              f.write(summary)
+
+          critical_regression = pr_counts.get("Critical", 0) > base_counts.get("Critical", 0)
+          high_regression = pr_counts.get("High", 0) > base_counts.get("High", 0)
+
+          if underfixed_updates:
+              pkg_list = ", ".join(sorted(underfixed_updates))
+              raise SystemExit(f"Failing due to underfixed Dependabot updates for High/Critical vulnerable packages: {pkg_list}")
+
+          if critical_regression or high_regression:
+              raise SystemExit("Failing due to High/Critical vulnerability regression in Dependabot PR")
+          PY
+
+      - name: Upload guard artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: dependabot-grype-guard-reports
+          path: security-reports/

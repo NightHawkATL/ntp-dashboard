@@ -1,0 +1,226 @@
+name: Grype Remediation Suggestions
+
+on:
+  workflow_run:
+    workflows:
+      - Weekly Grype Security Scan
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Optional workflow run ID to process
+        required: false
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+  issues: write
+
+jobs:
+  suggest-remediation:
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'pre-update-release')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Resolve source workflow run ID
+        id: run
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.run_id }}" ]; then
+            echo "id=${{ inputs.run_id }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "id=${{ github.event.workflow_run.id }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download weekly security artifact
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ steps.run.outputs.id }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+          import zipfile
+          from pathlib import Path
+
+          token = os.environ["GH_TOKEN"]
+          repo = os.environ["REPO"]
+          run_id = os.environ["RUN_ID"]
+
+          api_url = f"https://api.github.com/repos/{repo}/actions/runs/{run_id}/artifacts"
+          req = urllib.request.Request(api_url, headers={
+              "Accept": "application/vnd.github+json",
+              "Authorization": f"Bearer {token}",
+              "User-Agent": "ntp-dashboard-grype-remediation-suggestions",
+          })
+
+          with urllib.request.urlopen(req, timeout=30) as resp:
+              artifacts = json.loads(resp.read().decode("utf-8"))
+
+          selected = None
+          for art in artifacts.get("artifacts", []):
+              if art.get("name") == "weekly-security-reports" and not art.get("expired", False):
+                  selected = art
+                  break
+
+          if not selected:
+              raise SystemExit("No weekly-security-reports artifact found for the selected run")
+
+          dl_req = urllib.request.Request(selected["archive_download_url"], headers={
+              "Accept": "application/vnd.github+json",
+              "Authorization": f"Bearer {token}",
+              "User-Agent": "ntp-dashboard-grype-remediation-suggestions",
+          })
+
+          zip_path = Path("artifact.zip")
+          with urllib.request.urlopen(dl_req, timeout=60) as resp:
+              zip_path.write_bytes(resp.read())
+
+          out_dir = Path("security-reports")
+          out_dir.mkdir(parents=True, exist_ok=True)
+
+          with zipfile.ZipFile(zip_path, "r") as zf:
+              zf.extractall(out_dir)
+          PY
+
+      - name: Build remediation recommendation report
+        id: report
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from collections import Counter
+          from pathlib import Path
+
+          report_md = Path("security-reports/weekly-security-report.md")
+          scan_json = Path("security-reports/grype-image-local.json")
+
+          if not report_md.exists() or not scan_json.exists():
+              raise SystemExit("Expected weekly-security-report.md and grype-image-local.json in artifact")
+
+          data = json.loads(scan_json.read_text(encoding="utf-8"))
+          matches = data.get("matches", [])
+
+          severity_counts = Counter()
+          recommendations = {}
+
+          for match in matches:
+              vuln = match.get("vulnerability", {})
+              fix = vuln.get("fix", {}) or {}
+              artifact = match.get("artifact", {})
+
+              sev = vuln.get("severity", "Unknown").title()
+              severity_counts[sev] += 1
+
+              if fix.get("state") != "fixed":
+                  continue
+
+              pkg = artifact.get("name", "unknown")
+              current = artifact.get("version", "unknown")
+              fixes = fix.get("versions", [])
+              if not fixes:
+                  continue
+
+              bucket = recommendations.setdefault(pkg, {
+                  "current_versions": set(),
+                  "target_versions": set(),
+                  "severities": set(),
+              })
+              bucket["current_versions"].add(current)
+              bucket["target_versions"].update(fixes)
+              bucket["severities"].add(sev)
+
+          ordered = sorted(
+              recommendations.items(),
+              key=lambda item: (
+                  0 if "Critical" in item[1]["severities"] else 1 if "High" in item[1]["severities"] else 2,
+                  item[0],
+              ),
+          )
+
+          lines = [
+              "# Grype Remediation Suggestions",
+              "",
+              "This issue is generated automatically from the latest successful weekly Grype scan artifact.",
+              "",
+              "## Local Image Scan Snapshot",
+              "",
+              f"- Critical: {severity_counts.get('Critical', 0)}",
+              f"- High: {severity_counts.get('High', 0)}",
+              f"- Medium: {severity_counts.get('Medium', 0)}",
+              f"- Low: {severity_counts.get('Low', 0)}",
+              "",
+              "## Fixable Recommendations",
+              "",
+          ]
+
+          if not ordered:
+              lines.append("No fixable package updates were reported by Grype for the local image scan.")
+              has_recommendations = "false"
+          else:
+              lines.append("| Package | Current | Recommended target(s) | Highest severity |")
+              lines.append("|---|---|---|---|")
+              for pkg, rec in ordered:
+                  highest = "Critical" if "Critical" in rec["severities"] else "High" if "High" in rec["severities"] else "Medium" if "Medium" in rec["severities"] else "Low"
+                  current = ", ".join(sorted(rec["current_versions"]))
+                  target = ", ".join(sorted(rec["target_versions"]))
+                  lines.append(f"| {pkg} | {current} | {target} | {highest} |")
+              has_recommendations = "true"
+
+          lines.extend([
+              "",
+              "## Notes",
+              "",
+              "- Dependabot PRs should be reviewed against this recommendation set.",
+              "- The Dependabot Grype Guard workflow enforces no High/Critical regression on merge.",
+          ])
+
+          body = "\n".join(lines) + "\n"
+          Path("remediation-issue.md").write_text(body, encoding="utf-8")
+          Path("report-flags.txt").write_text(has_recommendations, encoding="utf-8")
+          PY
+
+          echo "has_recommendations=$(cat report-flags.txt)" >> "$GITHUB_OUTPUT"
+
+      - name: Create or update remediation tracking issue
+        if: steps.report.outputs.has_recommendations == 'true'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require('fs');
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const title = 'Grype remediation suggestions';
+            const body = fs.readFileSync('remediation-issue.md', 'utf8');
+
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: 'open',
+              per_page: 100,
+            });
+
+            const existing = issues.find(i => i.title.toLowerCase() === title.toLowerCase());
+
+            if (existing) {
+              await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number: existing.number,
+                body,
+              });
+              core.notice(`Updated issue #${existing.number}`);
+            } else {
+              const created = await github.rest.issues.create({
+                owner,
+                repo,
+                title,
+                body,
+              });
+              core.notice(`Created issue #${created.data.number}`);
+            }
