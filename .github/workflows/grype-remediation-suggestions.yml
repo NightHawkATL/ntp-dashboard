@@ -152,7 +152,6 @@ jobs:
           echo "has_recommendations=$(cat report-flags.txt)" >> "$GITHUB_OUTPUT"
 
       - name: Create or update remediation tracking issue
-        if: steps.report.outputs.has_recommendations == 'true'
         uses: actions/github-script@v8
         with:
           script: |
@@ -161,6 +160,7 @@ jobs:
             const repo = context.repo.repo;
             const title = 'Grype remediation suggestions';
             const body = fs.readFileSync('remediation-issue.md', 'utf8');
+            const hasRecommendations = '${{ steps.report.outputs.has_recommendations }}' === 'true';
 
             const issues = await github.paginate(github.rest.issues.listForRepo, {
               owner,
@@ -171,20 +171,35 @@ jobs:
 
             const existing = issues.find(i => i.title.toLowerCase() === title.toLowerCase() && !i.pull_request);
 
-            if (existing) {
-              await github.rest.issues.update({
-                owner,
-                repo,
-                issue_number: existing.number,
-                body,
-              });
-              core.notice(`Updated issue #${existing.number}`);
+            if (hasRecommendations) {
+              if (existing) {
+                await github.rest.issues.update({
+                  owner,
+                  repo,
+                  issue_number: existing.number,
+                  body,
+                });
+                core.notice(`Updated issue #${existing.number}`);
+              } else {
+                const created = await github.rest.issues.create({
+                  owner,
+                  repo,
+                  title,
+                  body,
+                });
+                core.notice(`Created issue #${created.data.number}`);
+              }
             } else {
-              const created = await github.rest.issues.create({
-                owner,
-                repo,
-                title,
-                body,
-              });
-              core.notice(`Created issue #${created.data.number}`);
+              if (existing) {
+                await github.rest.issues.update({
+                  owner,
+                  repo,
+                  issue_number: existing.number,
+                  body,
+                  state: 'closed',
+                });
+                core.notice(`Closed issue #${existing.number} -- no fixable recommendations`);
+              } else {
+                core.notice('No fixable recommendations and no open tracking issue -- nothing to do');
+              }
             }
