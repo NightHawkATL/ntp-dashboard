@@ -9,8 +9,8 @@ on:
   workflow_dispatch:
     inputs:
       run_id:
-        description: Optional workflow run ID to process
-        required: false
+        description: Workflow run ID from Weekly Grype Security Scan to process
+        required: true
         type: string
 
 permissions:
@@ -26,83 +26,20 @@ jobs:
     steps:
       - name: Resolve source workflow run ID
         id: run
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.run_id }}" ]; then
-            echo "id=${{ inputs.run_id }}" >> "$GITHUB_OUTPUT"
-          elif [ "${{ github.event_name }}" = "workflow_run" ]; then
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
             echo "id=${{ github.event.workflow_run.id }}" >> "$GITHUB_OUTPUT"
-          else
-            python - <<'PY'
-            import datetime
-            import json
-            import os
-            import urllib.parse
-            import urllib.request
-
-            token = os.environ["GH_TOKEN"]
-            repo = os.environ["REPO"]
-            workflow_name = "Weekly Grype Security Scan"
-            output_path = os.environ["GITHUB_OUTPUT"]
-
-            headers = {
-                "Accept": "application/vnd.github+json",
-                "Authorization": f"Bearer {token}",
-                "User-Agent": "ntp-dashboard-grype-remediation-suggestions",
-            }
-
-            workflows_url = f"https://api.github.com/repos/{repo}/actions/workflows"
-            workflows_req = urllib.request.Request(workflows_url, headers=headers)
-            with urllib.request.urlopen(workflows_req, timeout=30) as resp:
-                workflows = json.loads(resp.read().decode("utf-8"))
-
-            workflow_id = None
-            for workflow in workflows.get("workflows", []):
-                if workflow.get("name") == workflow_name:
-                    workflow_id = workflow["id"]
-                    break
-
-            if workflow_id is None:
-                raise SystemExit(f"Workflow not found: {workflow_name}")
-
-            def fetch_runs(extra_params=None):
-                params = {
-                    "status": "success",
-                    "per_page": 1,
-                }
-                if extra_params:
-                    params.update(extra_params)
-                runs_url = (
-                    f"https://api.github.com/repos/{repo}/actions/workflows/"
-                    f"{workflow_id}/runs?{urllib.parse.urlencode(params)}"
-                )
-                runs_req = urllib.request.Request(runs_url, headers=headers)
-                with urllib.request.urlopen(runs_req, timeout=30) as resp:
-                    return json.loads(resp.read().decode("utf-8")).get("workflow_runs", [])
-
-            # Prefer a scan that completed within the last 7 days (same-week window).
-            now = datetime.datetime.now(datetime.timezone.utc)
-            week_ago = now - datetime.timedelta(days=7)
-            created_filter = f">={week_ago.strftime('%Y-%m-%dT%H:%M:%SZ')}"
-
-            workflow_runs = fetch_runs({"created": created_filter})
-            if not workflow_runs:
-                # Fall back to the most recent successful run if none found this week.
-                workflow_runs = fetch_runs()
-
-            if not workflow_runs:
-                raise SystemExit(
-                    f"No successful runs found for workflow '{workflow_name}'"
-                )
-
-            run_id = workflow_runs[0]["id"]
-            with open(output_path, "a", encoding="utf-8") as fh:
-                fh.write(f"id={run_id}\n")
-            PY
+            exit 0
           fi
+
+          if [ -n "${{ inputs.run_id }}" ]; then
+            echo "id=${{ inputs.run_id }}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "workflow_dispatch requires run_id input" >&2
+          exit 1
 
       - name: Download weekly security artifact
         env:
