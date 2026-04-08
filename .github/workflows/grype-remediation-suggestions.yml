@@ -46,7 +46,6 @@ jobs:
             token = os.environ["GH_TOKEN"]
             repo = os.environ["REPO"]
             workflow_name = "Weekly Grype Security Scan"
-            branch = "pre-update-release"
             output_path = os.environ["GITHUB_OUTPUT"]
 
             headers = {
@@ -72,7 +71,6 @@ jobs:
             def fetch_runs(extra_params=None):
                 params = {
                     "status": "success",
-                    "branch": branch,
                     "per_page": 1,
                 }
                 if extra_params:
@@ -97,7 +95,7 @@ jobs:
 
             if not workflow_runs:
                 raise SystemExit(
-                    f"No successful runs found for workflow '{workflow_name}' on branch '{branch}'"
+                    f"No successful runs found for workflow '{workflow_name}'"
                 )
 
             run_id = workflow_runs[0]["id"]
