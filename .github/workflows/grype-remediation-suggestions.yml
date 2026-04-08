@@ -29,12 +29,68 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.run_id }}" ]; then
             echo "id=${{ inputs.run_id }}" >> "$GITHUB_OUTPUT"
           elif [ "${{ github.event_name }}" = "workflow_run" ]; then
             echo "id=${{ github.event.workflow_run.id }}" >> "$GITHUB_OUTPUT"
+          else
+            python - <<'PY'
+            import json
+            import os
+            import urllib.parse
+            import urllib.request
+
+            token = os.environ["GH_TOKEN"]
+            repo = os.environ["REPO"]
+            workflow_name = "Weekly Grype Security Scan"
+            branch = "pre-update-release"
+            output_path = os.environ["GITHUB_OUTPUT"]
+
+            headers = {
+                "Accept": "application/vnd.github+json",
+                "Authorization": f"Bearer {token}",
+                "User-Agent": "ntp-dashboard-grype-remediation-suggestions",
+            }
+
+            workflows_url = f"https://api.github.com/repos/{repo}/actions/workflows"
+            workflows_req = urllib.request.Request(workflows_url, headers=headers)
+            with urllib.request.urlopen(workflows_req, timeout=30) as resp:
+                workflows = json.loads(resp.read().decode("utf-8"))
+
+            workflow_id = None
+            for workflow in workflows.get("workflows", []):
+                if workflow.get("name") == workflow_name:
+                    workflow_id = workflow["id"]
+                    break
+
+            if workflow_id is None:
+                raise SystemExit(f"Workflow not found: {workflow_name}")
+
+            params = urllib.parse.urlencode({
+                "status": "success",
+                "branch": branch,
+                "per_page": 1,
+            })
+            runs_url = f"https://api.github.com/repos/{repo}/actions/workflows/{workflow_id}/runs?{params}"
+            runs_req = urllib.request.Request(runs_url, headers=headers)
+            with urllib.request.urlopen(runs_req, timeout=30) as resp:
+                runs = json.loads(resp.read().decode("utf-8"))
+
+            workflow_runs = runs.get("workflow_runs", [])
+            if not workflow_runs:
+                raise SystemExit(
+                    f"No successful runs found for workflow '{workflow_name}' on branch '{branch}'"
+                )
+
+            run_id = workflow_runs[0]["id"]
+            with open(output_path, "a", encoding="utf-8") as fh:
+                fh.write(f"id={run_id}\n")
+            PY
           else
             python - <<'PY'
             import datetime
