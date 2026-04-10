@@ -18,6 +18,9 @@ permissions:
   contents: read
   issues: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   suggest-remediation:
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
@@ -42,58 +45,12 @@ jobs:
           exit 1
 
       - name: Download weekly security artifact
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
-          RUN_ID: ${{ steps.run.outputs.id }}
-        run: |
-          set -euo pipefail
-          python - <<'PY'
-          import json
-          import os
-          import urllib.request
-          import zipfile
-          from pathlib import Path
-
-          token = os.environ["GH_TOKEN"]
-          repo = os.environ["REPO"]
-          run_id = os.environ["RUN_ID"]
-
-          api_url = f"https://api.github.com/repos/{repo}/actions/runs/{run_id}/artifacts"
-          req = urllib.request.Request(api_url, headers={
-              "Accept": "application/vnd.github+json",
-              "Authorization": f"Bearer {token}",
-              "User-Agent": "ntp-dashboard-grype-remediation-suggestions",
-          })
-
-          with urllib.request.urlopen(req, timeout=30) as resp:
-              artifacts = json.loads(resp.read().decode("utf-8"))
-
-          selected = None
-          for art in artifacts.get("artifacts", []):
-              if art.get("name") == "weekly-security-reports" and not art.get("expired", False):
-                  selected = art
-                  break
-
-          if not selected:
-              raise SystemExit("No weekly-security-reports artifact found for the selected run")
-
-          dl_req = urllib.request.Request(selected["archive_download_url"], headers={
-              "Accept": "application/vnd.github+json",
-              "Authorization": f"Bearer {token}",
-              "User-Agent": "ntp-dashboard-grype-remediation-suggestions",
-          })
-
-          zip_path = Path("artifact.zip")
-          with urllib.request.urlopen(dl_req, timeout=60) as resp:
-              zip_path.write_bytes(resp.read())
-
-          out_dir = Path("security-reports")
-          out_dir.mkdir(parents=True, exist_ok=True)
-
-          with zipfile.ZipFile(zip_path, "r") as zf:
-              zf.extractall(out_dir)
-          PY
+        uses: actions/download-artifact@v5
+        with:
+          name: weekly-security-reports
+          path: security-reports
+          run-id: ${{ steps.run.outputs.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build remediation recommendation report
         id: report
