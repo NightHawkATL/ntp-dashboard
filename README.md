@@ -2,15 +2,15 @@
 
 When I first built my NTP-PPS server, I followed this blog on how to do it: https://blog.networkprofile.org/gps-backed-local-ntp-server/. Once I was done, I wanted to be able to check on it occasionally to make sure everything was still working as expected. I just wanted to be able to monitor it without doing a bunch of extra work with Grafana and whatever else would be needed. That is where I came up with this app, to fill a need that I had for a dashboard for my NTP server. I couldn't find anything that I liked or was anywhere close to what I wanted, so I had to wait for AI to get good enough and for me to want to use it to come up with this solution. I do hope you enjoy it and consider giving it a star.
 
-The initial deployment for this app is to pull the sources data from Chrony on your docker host and show the servers that it is using. It will display the current system time and time offset from NTP. This is similar to an "NTP Client" that just pulls the time based on how the Docker host is setup for time resolution.
+The initial deployment for this app pulls source data from Chrony on your Docker host and shows the servers it is using. It also displays the current system time and time offset from NTP. This is similar to an "NTP Client" that pulls time based on how the Docker host is set up for time resolution. _If you deploy this locally to your NTP server, it will look similar to the "Remote" host connection, including `PPS`, `NMEA`, satellite data, and connected clients. For a `Local` deployment on a different host than your NTP server, it will look like the image below._
 
 <img width="1045" height="858" alt="image" src="https://github.com/user-attachments/assets/8c26db82-3838-4c46-8c5a-135d765cc5ae" />
 
-When connecting the app to a personal NTP GPS-enabled server over SSH, you will then see the NMEA and PPS data, along with the GPS data visualized. All you have to do is click on the "Connection Setup" button and put in the SSH credentials for your personal NTP server and it will make the connection and populate the data correctly. The login credentials are stored locally in a "config.json" file that is stored wherever you set the bind mount to (default is `./data:/app/data`). The password is stored as encrypted and a separate key is used to unlock or decrypt the password for use.
+When connecting the app to a personal NTP GPS-enabled server over SSH, you will then see the NMEA and PPS data, along with visualized GPS data. All you have to do is click the "Connection Setup" button, enter the SSH credentials for your personal NTP server, and it will connect and populate the data correctly. The login credentials are stored locally in a "config.json" file wherever you set the bind mount (default is `./data:/app/data`). The password is stored encrypted, and a separate key is used to decrypt it when needed.
 
 <img width="940" height="852" alt="image" src="https://github.com/user-attachments/assets/f33ea67f-cda3-49bb-850a-0d03c18ec7d4" />
 
-Connecting to the remote server with SSH keys is as easy as "copy & paste" just open the connection settings, choose "Remote" and then fill in all the fields except password and then paste in your private key. The remote session will be activated and connected.
+Connecting to the remote server with SSH keys is as easy as copy and paste: open the connection settings, choose "Remote", fill in all fields except password, and paste in your private key. The remote session will be activated and connected.
 
 <img width="454" height="604" alt="image" src="https://github.com/user-attachments/assets/7bd6cc08-7998-4360-a374-9c63288c7816" />
 
@@ -20,7 +20,7 @@ With the color picker, you can make the interface match your favorite color (as 
 
 The NTP Sources data will refresh every 2 seconds and the Satellites data will refresh every 30 seconds. The GPS Satellite Time display will update every 30 seconds as the satellite data is updated.
 
-The "View Clients" button will reveal a list of connected clients when running in "Remote" mode. It will allow you to track all the IP addresses (clients) that are currently connected and getting time from your NTP server, without having to drill into the CLI to get that information! You will get an error for this when in local mode as it is not supported.
+The "View Clients" button reveals a list of connected clients and lets you track IP addresses currently getting time from your NTP server, without drilling into the CLI. This works in both "Remote" mode and "Local" mode when deployed on the NTP server host with `network_mode: "host"` and `/run/chrony:/run/chrony` mounted.
 
 <img width="670" height="783" alt="image" src="https://github.com/user-attachments/assets/a870b1c2-ef97-4355-b312-be2144e512a6" />
 
@@ -42,14 +42,15 @@ services:
         # - CRITICAL # Critical failures only
     volumes:
       - ./data:/app/data ## Bind mounts are suggested to have easy-access to the data files.
+      - /run/chrony:/run/chrony # Needed for local-only deployments to access chrony correctly and gather data
     restart: unless-stopped ## Typical deployment unless you wish to change this.
 ```
 # Prerequisites
-In order to get the most out of this app, even for the "local-only" deployment in docker, you will need to install Chrony on your host. For Debian-based or Ubuntu users, this is as simple as `sudo apt install chrony`. There is a link in the wiki for "troubleshooting" on how to install chrony for other distros.
+In order to get the most out of this app, even for the "local-only" deployment in Docker, you will need to install Chrony on your host. For Debian-based or Ubuntu users, this is as simple as `sudo apt install chrony`. There is a link in the wiki for "troubleshooting" on how to install Chrony for other distros.
 
 The network mode must be set to "host" to allow direct access to the chrony service that is running on the host. If this is changed to "bridge" or anything else, it will not work as expected.
 
-Local GPS probing from inside the container is optional. The default build installs Chrony tooling only, which avoids shipping Alpine's gpsd package by default. If you need local `gpspipe` support in the container, build with `INSTALL_GPSD_CLIENTS=true`. It is typically not needed locally unless you are running the dashboard directly on the NTP Server. Because `gpspipe` currently has a critical CVE [CVE-2025-67268](https://nvd.nist.gov/vuln/detail/CVE-2025-67268) that pertains to `apk / alpine/gpsd / 3.26.1-r0`. In order to provide a safe and secure application, this has been specifically removed for those that are installing the app for a remote connection. If you intend to run the app local to the NTP server, you will need to build from source and add the argument to install `gpsd`. See the `compose.yaml` [here](https://github.com/NightHawkATL/ntp-dashboard/blob/main/compose.yaml).
+Local GPS probing from inside the container is optional. The default build installs Chrony tooling only, which avoids shipping Alpine's gpsd package by default. If you need local `gpspipe` support in the container, build with `INSTALL_GPSD_CLIENTS=true`. It is typically not needed unless you are running the dashboard directly on the NTP server. `gpspipe` currently has a critical CVE, [CVE-2025-67268](https://nvd.nist.gov/vuln/detail/CVE-2025-67268), affecting `apk / alpine/gpsd / 3.26.1-r0`. To keep the default deployment safer, gpsd support is excluded by default for remote-connection installs. If you intend to run the app local to the NTP server, build from source and set the argument to install `gpsd`. See `compose.yaml` [here](https://github.com/NightHawkATL/ntp-dashboard/blob/main/compose.yaml).
 
 # Resource Usage
 Usage is low running either the amd64 or the arm64 image. Network is near 0% even if you are using the "remote" mode to access a local NTP server on your network.
