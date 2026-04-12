@@ -16,10 +16,9 @@ RUN mkdir -p /app/static && wget -q https://cdn.tailwindcss.com/ -O /app/static/
 
 # 3. Install Python requirements
 COPY requirements.txt .
-RUN apk add --no-cache build-base
-RUN pip install --no-cache-dir --upgrade "pip==26.0.1"
-RUN apk add --no-cache build-base libffi-dev openssl-dev python3-dev \
-	&& pip install --no-cache-dir -r requirements.txt
+RUN apk add --no-cache build-base libffi-dev openssl-dev python3-dev
+RUN pip install --no-cache-dir --upgrade "pip==26.0.1" \
+    && pip install --no-cache-dir -r requirements.txt
 
 # 4. Copy the app files (.dockerignore will block the junk automatically)
 COPY . .
