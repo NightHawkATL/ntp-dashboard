@@ -45,7 +45,7 @@ jobs:
           exit 1
 
       - name: Download weekly security artifact
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: weekly-security-reports
           path: security-reports
