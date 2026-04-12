@@ -68,11 +68,11 @@ def save_config(config):
     log.info('Configuration saved; mode=%r host=%r', config.get('mode'), config.get('host') or 'local')
 
 # --- Command Execution ---
-def run_commands_local(cmds):
+def run_commands_local(cmds, timeout_seconds=5):
     results =[]
     for cmd in cmds:
         try:
-            proc = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=5)
+            proc = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=timeout_seconds)
             if proc.returncode != 0:
                 log.warning('Local command failed (rc=%s): %s :: %s', proc.returncode, cmd, proc.stdout.strip())
                 results.append(f"Error: {proc.stdout.strip()}")
@@ -83,7 +83,7 @@ def run_commands_local(cmds):
             results.append("Error: An internal error occurred while executing a local command.")
     return results
 
-def run_commands_remote(cmds, config):
+def run_commands_remote(cmds, config, timeout_seconds=5):
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     results =[]
@@ -109,7 +109,7 @@ def run_commands_remote(cmds, config):
         ssh.connect(config.get('host'), username=config.get('user'), password=pwd, key_filename=key_filepath, timeout=10, banner_timeout=15, auth_timeout=15, look_for_keys=False)
         
         for cmd in cmds:
-            stdin, stdout, stderr = ssh.exec_command(cmd, timeout=5)
+            stdin, stdout, stderr = ssh.exec_command(cmd, timeout=timeout_seconds)
             err_out = stderr.read().decode('utf-8').strip()
             std_out = stdout.read().decode('utf-8').strip()
             
@@ -193,24 +193,31 @@ def get_ntp():
 @app.route('/api/gps')
 def get_gps():
     config = load_config()
-    cmd = ["timeout 3 gpspipe -w -n 12"]
+    # Keep sample collection long enough to gather TPV/SKY reliably on slower receivers.
+    cmd = ["timeout 8 gpspipe -w -n 8"]
     
     if config.get("mode") == "local":
-        gps_out = run_commands_local(cmd)[0]
+        gps_out = run_commands_local(cmd, timeout_seconds=10)[0]
     else:
-        gps_out = run_commands_remote(cmd, config)[0]
+        gps_out = run_commands_remote(cmd, config, timeout_seconds=10)[0]
         
     satellites =[]
     gps_time = "Waiting for lock..."
     error = None
+    parse_source = gps_out or ""
+    if gps_out and gps_out.startswith('Error:'):
+        # Non-zero exit (often timeout) may still include usable JSON output.
+        parse_source = gps_out[len('Error:'):].lstrip()
+
     if gps_out and (gps_out.startswith('Error:') or "command not found" in gps_out.lower()):
         error = gps_out
         if config.get("mode") == "local" and "gpspipe" in gps_out and "not found" in gps_out.lower():
             error = "Local GPS support is not installed in this image. Rebuild with INSTALL_GPSD_CLIENTS=true to enable gpspipe, or switch to Remote mode."
             gps_time = "Local GPS support not installed"
 
-    if gps_out and not error:
-        for line in gps_out.strip().split('\n'):
+    if parse_source:
+        parsed_any = False
+        for line in parse_source.strip().split('\n'):
             if not line:
                 continue
             try:
@@ -218,13 +225,19 @@ def get_gps():
                 if data.get("class") == "SKY":
                     if "satellites" in data:
                         satellites = data["satellites"]
+                        parsed_any = True
                 elif data.get("class") == "TPV" and "time" in data:
                     gps_time = data.get("time")
+                    parsed_any = True
             except json.JSONDecodeError as e:
                 log.debug('GPS: could not parse line as JSON: %s', e)
             except Exception as e:
                 log.exception('GPS: unexpected error parsing line: %s', e)
                 error = "GPS parsing error occurred"
+
+        # If we recovered useful data from a timeout-wrapped command, do not surface an error.
+        if parsed_any and error and isinstance(error, str) and error.startswith('Error:'):
+            error = None
 
     if error:
         log.warning('GPS API returned error in %s mode: %s', config.get('mode'), error)
