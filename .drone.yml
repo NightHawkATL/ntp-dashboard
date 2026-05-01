@@ -4,6 +4,10 @@ kind: pipeline
 type: docker
 name: smoke-test
 
+platform:
+  os: linux
+  arch: arm64
+
 trigger:
   event:
     - push
@@ -23,6 +27,10 @@ steps:
 kind: pipeline
 type: docker
 name: docker-publish
+
+platform:
+  os: linux
+  arch: arm64
 
 trigger:
   event:
@@ -74,6 +82,10 @@ volumes:
 kind: pipeline
 type: docker
 name: weekly-grype-scan
+
+platform:
+  os: linux
+  arch: arm64
 
 trigger:
   event:
@@ -225,7 +237,7 @@ steps:
         token = os.environ["GITEA_TOKEN"]
         server = os.environ["GITEA_SERVER"].rstrip("/")
         repo_owner = "NightHawk-ATL"
-        repo_name = "ntp-dashboard-gh-mirror"
+        repo_name = "ntp-dashboard"
 
         headers = {"Authorization": f"token {token}", "Content-Type": "application/json"}
         title = "Weekly Grype Security Scan Report"
