@@ -41,7 +41,7 @@ trigger:
       - refs/tags/v*
 
 steps:
-  - name: docker-login-hub
+  - name: docker-build-and-push
     image: docker:27-cli
     volumes:
       - name: dockersock
@@ -53,16 +53,6 @@ steps:
         from_secret: DOCKER_PASSWORD
     commands:
       - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-
-  - name: build-and-push
-    image: docker:27-cli
-    volumes:
-      - name: dockersock
-        path: /var/run/docker.sock
-    environment:
-      DOCKER_USERNAME:
-        from_secret: DOCKER_USERNAME
-    commands:
       - docker buildx create --use --name multiarch-builder || true
       - >
         docker buildx build
