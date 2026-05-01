@@ -36,6 +36,7 @@ trigger:
   event:
     include:
       - tag
+      - create
   ref:
     include:
       - refs/tags/v*
