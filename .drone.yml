@@ -34,9 +34,11 @@ platform:
 
 trigger:
   event:
-    - tag
+    include:
+      - tag
   ref:
-    - refs/tags/v*
+    include:
+      - refs/tags/v*
 
 steps:
   - name: docker-login-hub
