@@ -106,16 +106,21 @@ steps:
   - name: discover-grype-version
     image: python:3.13-alpine
     commands:
-      - >
-        python -c "
-        import json, urllib.request;
+      - |
+        python - <<'PY' > /tmp/grype-tag.txt
+        import json
+        import urllib.request
+
         req = urllib.request.Request(
-          'https://api.github.com/repos/anchore/grype/releases/latest',
-          headers={'Accept':'application/vnd.github+json','User-Agent':'ntp-dashboard-weekly-grype-scan'}
-        );
-        data = json.load(urllib.request.urlopen(req, timeout=30));
-        print(data['tag_name'])
-        " > /tmp/grype-tag.txt
+            "https://api.github.com/repos/anchore/grype/releases/latest",
+            headers={
+                "Accept": "application/vnd.github+json",
+                "User-Agent": "ntp-dashboard-weekly-grype-scan",
+            },
+        )
+        data = json.load(urllib.request.urlopen(req, timeout=30))
+        print(data["tag_name"])
+        PY
       - cat /tmp/grype-tag.txt
       - cp /tmp/grype-tag.txt /drone/src/grype-tag.txt
 
