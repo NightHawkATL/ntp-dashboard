@@ -108,11 +108,6 @@ steps:
       DOCKER_PASSWORD:
         from_secret: DOCKER_PASSWORD
     commands:
-      - |
-        if [ "${RETAG_LATEST}" != "true" ]; then
-          echo "Set build parameter RETAG_LATEST=true to run this recovery pipeline."
-          exit 1
-        fi
       - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
       - docker buildx imagetools create -t "$DOCKER_USERNAME/ntp-dashboard:latest" "$DOCKER_USERNAME/ntp-dashboard:v0.1.6"
       - docker buildx imagetools inspect "$DOCKER_USERNAME/ntp-dashboard:v0.1.6"
