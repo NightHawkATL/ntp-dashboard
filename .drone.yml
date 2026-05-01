@@ -1,0 +1,262 @@
+---
+# Pipeline 1: Smoke test on every push and pull request
+kind: pipeline
+type: docker
+name: smoke-test
+
+trigger:
+  event:
+    - push
+    - pull_request
+
+steps:
+  - name: install-and-compile-check
+    image: python:3.13-alpine
+    commands:
+      - python -V
+      - pip install --no-cache-dir -r requirements.txt
+      - python -m py_compile app.py
+      - echo "Smoke test passed"
+
+---
+# Pipeline 2: Build and publish multi-arch Docker image on release tag
+kind: pipeline
+type: docker
+name: docker-publish
+
+trigger:
+  event:
+    - tag
+  ref:
+    - refs/tags/v*
+
+steps:
+  - name: docker-login-hub
+    image: docker:27-cli
+    volumes:
+      - name: dockersock
+        path: /var/run/docker.sock
+    environment:
+      DOCKER_USERNAME:
+        from_secret: DOCKER_USERNAME
+      DOCKER_PASSWORD:
+        from_secret: DOCKER_PASSWORD
+    commands:
+      - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+
+  - name: build-and-push
+    image: docker:27-cli
+    volumes:
+      - name: dockersock
+        path: /var/run/docker.sock
+    environment:
+      DOCKER_USERNAME:
+        from_secret: DOCKER_USERNAME
+    commands:
+      - docker buildx create --use --name multiarch-builder || true
+      - >
+        docker buildx build
+        --platform linux/amd64,linux/arm64
+        --build-arg INSTALL_GPSD_CLIENTS=false
+        --build-arg APP_VERSION=${DRONE_TAG}
+        -t $DOCKER_USERNAME/ntp-dashboard:${DRONE_TAG}
+        -t $DOCKER_USERNAME/ntp-dashboard:latest
+        --push
+        .
+
+volumes:
+  - name: dockersock
+    host:
+      path: /var/run/docker.sock
+
+---
+# Pipeline 3: Weekly Grype security scan (Wednesday 12:00 UTC) + manual trigger
+kind: pipeline
+type: docker
+name: weekly-grype-scan
+
+trigger:
+  event:
+    - cron
+    - custom
+  cron:
+    - weekly-grype
+
+steps:
+  - name: build-local-image
+    image: docker:27-cli
+    volumes:
+      - name: dockersock
+        path: /var/run/docker.sock
+    commands:
+      - docker build --build-arg INSTALL_GPSD_CLIENTS=false -t ntp-dashboard:security-scan .
+
+  - name: discover-grype-version
+    image: python:3.13-alpine
+    commands:
+      - >
+        python -c "
+        import json, urllib.request;
+        req = urllib.request.Request(
+          'https://api.github.com/repos/anchore/grype/releases/latest',
+          headers={'Accept':'application/vnd.github+json','User-Agent':'ntp-dashboard-weekly-grype-scan'}
+        );
+        data = json.load(urllib.request.urlopen(req, timeout=30));
+        print(data['tag_name'])
+        " > /tmp/grype-tag.txt
+      - cat /tmp/grype-tag.txt
+      - cp /tmp/grype-tag.txt /drone/src/grype-tag.txt
+
+  - name: run-grype-scans
+    image: docker:27-cli
+    volumes:
+      - name: dockersock
+        path: /var/run/docker.sock
+    commands:
+      - GRYPE_TAG=$(cat grype-tag.txt)
+      - mkdir -p grype-db-cache security-reports
+      - docker pull anchore/grype:$GRYPE_TAG
+      - >
+        docker run --rm
+        -e GRYPE_DB_CACHE_DIR=/grype-db
+        -e GRYPE_DB_VALIDATE_AGE=false
+        -v $PWD/grype-db-cache:/grype-db
+        anchore/grype:$GRYPE_TAG db update
+      - >
+        docker run --rm
+        -e GRYPE_DB_CACHE_DIR=/grype-db
+        -e GRYPE_DB_VALIDATE_AGE=false
+        -v $PWD:/workspace
+        -v $PWD/grype-db-cache:/grype-db
+        anchore/grype:$GRYPE_TAG
+        dir:/workspace
+        -o json > security-reports/grype-project.json
+      - >
+        docker run --rm
+        -e GRYPE_DB_CACHE_DIR=/grype-db
+        -e GRYPE_DB_VALIDATE_AGE=false
+        -v /var/run/docker.sock:/var/run/docker.sock
+        -v $PWD/grype-db-cache:/grype-db
+        anchore/grype:$GRYPE_TAG
+        ntp-dashboard:security-scan
+        -o json > security-reports/grype-image-local.json
+
+  - name: build-report
+    image: python:3.13-alpine
+    commands:
+      - |
+        python - <<'PY'
+        import json
+        from collections import Counter
+        from datetime import datetime, timezone
+        from pathlib import Path
+
+        reports_dir = Path("security-reports")
+        sources = [
+            ("grype-project.json", "Repository source"),
+            ("grype-image-local.json", "Local image build"),
+        ]
+        severity_order = ["Critical", "High", "Medium", "Low", "Negligible", "Unknown"]
+
+        def parse_counts(path):
+            if not path.exists() or path.stat().st_size == 0:
+                return 0, Counter()
+            data = json.loads(path.read_text())
+            matches = data.get("matches", [])
+            counts = Counter()
+            for match in matches:
+                sev = match.get("vulnerability", {}).get("severity", "Unknown")
+                counts[sev.title()] += 1
+            return len(matches), counts
+
+        rows = []
+        aggregate = Counter()
+        aggregate_total = 0
+        for filename, label in sources:
+            total, counts = parse_counts(reports_dir / filename)
+            row = [label, str(total)]
+            row.extend(str(counts.get(level, 0)) for level in severity_order)
+            rows.append(row)
+            aggregate_total += total
+            aggregate.update(counts)
+
+        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+        grype_tag = Path("grype-tag.txt").read_text().strip()
+
+        lines = [
+            "# Weekly Security Scan Report",
+            "",
+            f"- Generated: {timestamp}",
+            f"- Grype image tag used: {grype_tag}",
+            "",
+            f"- Total findings: {aggregate_total}",
+            f"- Critical: {aggregate.get('Critical', 0)}",
+            f"- High: {aggregate.get('High', 0)}",
+            f"- Medium: {aggregate.get('Medium', 0)}",
+            "",
+            "## Vulnerability Summary",
+            "",
+            "| Scan Target | Total | Critical | High | Medium | Low | Negligible | Unknown |",
+            "|---|---:|---:|---:|---:|---:|---:|---:|",
+        ]
+        for row in rows:
+            lines.append("| " + " | ".join(row) + " |")
+
+        report_path = reports_dir / "weekly-security-report.md"
+        report_path.write_text("\n".join(lines) + "\n")
+        print((reports_dir / "weekly-security-report.md").read_text())
+        PY
+
+  - name: open-gitea-issue
+    image: python:3.13-alpine
+    environment:
+      GITEA_TOKEN:
+        from_secret: GITEA_TOKEN
+      GITEA_SERVER:
+        from_secret: GITEA_SERVER
+    commands:
+      - pip install --no-cache-dir requests
+      - |
+        python - <<'PY'
+        import json, os, requests
+        from pathlib import Path
+
+        report = Path("security-reports/weekly-security-report.md").read_text()
+        token = os.environ["GITEA_TOKEN"]
+        server = os.environ["GITEA_SERVER"].rstrip("/")
+        repo_owner = "NightHawk-ATL"
+        repo_name = "ntp-dashboard-gh-mirror"
+
+        headers = {"Authorization": f"token {token}", "Content-Type": "application/json"}
+        title = "Weekly Grype Security Scan Report"
+
+        resp = requests.get(
+            f"{server}/api/v1/repos/{repo_owner}/{repo_name}/issues",
+            headers=headers,
+            params={"type": "issues", "state": "open", "limit": 50},
+        )
+        resp.raise_for_status()
+        existing = next((i for i in resp.json() if i["title"] == title), None)
+
+        if existing:
+            r = requests.patch(
+                f"{server}/api/v1/repos/{repo_owner}/{repo_name}/issues/{existing['number']}",
+                headers=headers,
+                json={"body": report},
+            )
+            r.raise_for_status()
+            print(f"Updated issue #{existing['number']}")
+        else:
+            r = requests.post(
+                f"{server}/api/v1/repos/{repo_owner}/{repo_name}/issues",
+                headers=headers,
+                json={"title": title, "body": report},
+            )
+            r.raise_for_status()
+            print(f"Created issue #{r.json()['number']}")
+        PY
+
+volumes:
+  - name: dockersock
+    host:
+      path: /var/run/docker.sock
