@@ -81,6 +81,36 @@ volumes:
       path: /var/run/docker.sock
 
 ---
+# Pipeline 4: One-time recovery pipeline to repoint Docker Hub latest
+kind: pipeline
+type: docker
+name: retag-latest
+
+platform:
+  os: linux
+  arch: arm64
+
+trigger:
+  event:
+    - custom
+  target:
+    - retag-latest
+
+steps:
+  - name: copy-v016-to-latest
+    image: gcr.io/go-containerregistry/crane:debug
+    environment:
+      DOCKER_USERNAME:
+        from_secret: DOCKER_USERNAME
+      DOCKER_PASSWORD:
+        from_secret: DOCKER_PASSWORD
+    commands:
+      - crane auth login -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD" index.docker.io
+      - crane cp "$DOCKER_USERNAME/ntp-dashboard:v0.1.6" "$DOCKER_USERNAME/ntp-dashboard:latest"
+      - crane digest "$DOCKER_USERNAME/ntp-dashboard:v0.1.6"
+      - crane digest "$DOCKER_USERNAME/ntp-dashboard:latest"
+
+---
 # Pipeline 3: Weekly Grype security scan (Wednesday 12:00 UTC) + manual trigger
 kind: pipeline
 type: docker
