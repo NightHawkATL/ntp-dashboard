@@ -54,15 +54,25 @@ steps:
     commands:
       - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
       - docker buildx create --use --name multiarch-builder || true
-      - >
-        docker buildx build
-        --platform linux/amd64,linux/arm64
-        --build-arg INSTALL_GPSD_CLIENTS=false
-        --build-arg APP_VERSION=${DRONE_TAG}
-        -t $DOCKER_USERNAME/ntp-dashboard:${DRONE_TAG}
-        -t $DOCKER_USERNAME/ntp-dashboard:latest
-        --push
-        .
+      - |
+        if echo "${DRONE_TAG}" | grep -Eq "ci-test"; then
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            --build-arg INSTALL_GPSD_CLIENTS=false \
+            --build-arg APP_VERSION=${DRONE_TAG} \
+            -t $DOCKER_USERNAME/ntp-dashboard:${DRONE_TAG} \
+            --push \
+            .
+        else
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            --build-arg INSTALL_GPSD_CLIENTS=false \
+            --build-arg APP_VERSION=${DRONE_TAG} \
+            -t $DOCKER_USERNAME/ntp-dashboard:${DRONE_TAG} \
+            -t $DOCKER_USERNAME/ntp-dashboard:latest \
+            --push \
+            .
+        fi
 
 volumes:
   - name: dockersock
