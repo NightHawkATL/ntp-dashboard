@@ -108,6 +108,11 @@ steps:
       DOCKER_PASSWORD:
         from_secret: DOCKER_PASSWORD
     commands:
+      - |
+        if [ "${RUN_RETAG}" != "true" ]; then
+          echo "Skipping retag-latest. Set RUN_RETAG=true to execute this pipeline."
+          exit 0
+        fi
       - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
       - docker buildx imagetools create -t "$DOCKER_USERNAME/ntp-dashboard:latest" "$DOCKER_USERNAME/ntp-dashboard:v0.1.6"
       - docker buildx imagetools inspect "$DOCKER_USERNAME/ntp-dashboard:v0.1.6"
@@ -143,6 +148,11 @@ steps:
         from_secret: GITEA_TOKEN
       LOG_LEVEL: info
     commands:
+      - |
+        if [ "${RUN_RENOVATE}" != "true" ]; then
+          echo "Skipping renovate-bot. Set RUN_RENOVATE=true to execute this pipeline."
+          exit 0
+        fi
       - renovate
 
 ---
