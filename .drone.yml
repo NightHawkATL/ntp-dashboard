@@ -336,6 +336,438 @@ steps:
             print(f"Created issue #{r.json()['number']}")
         PY
 
+  - name: open-remediation-issue
+    image: python:3.13-alpine
+    environment:
+      GITEA_TOKEN:
+        from_secret: GITEA_TOKEN
+      GITEA_SERVER:
+        from_secret: GITEA_SERVER
+    commands:
+      - pip install --no-cache-dir requests
+      - |
+        python - <<'PY'
+        import json
+        import os
+        import sys
+        import requests
+        from collections import Counter
+        from pathlib import Path
+        from requests import RequestException
+
+        REQUEST_TIMEOUT = (5, 30)
+
+
+        def require_env(name):
+          value = os.environ.get(name, "").strip()
+          if not value:
+            raise RuntimeError(f"Missing required environment variable: {name}")
+          return value
+
+
+        def load_scan(path):
+          if not path.exists() or path.stat().st_size == 0:
+            print(f"{path} not found or empty, skipping remediation issue.")
+            raise SystemExit(0)
+          try:
+            return json.loads(path.read_text(encoding="utf-8"))
+          except json.JSONDecodeError as exc:
+            raise RuntimeError(f"Failed to parse {path}: {exc}") from exc
+
+        scan_json = Path("security-reports/grype-image-local.json")
+        data = load_scan(scan_json)
+        matches = data.get("matches", [])
+
+        severity_counts = Counter()
+        recommendations = {}
+
+        for match in matches:
+            vuln = match.get("vulnerability", {})
+            fix = vuln.get("fix", {}) or {}
+            artifact = match.get("artifact", {})
+
+            sev = vuln.get("severity", "Unknown").title()
+            severity_counts[sev] += 1
+
+            if fix.get("state") != "fixed":
+                continue
+
+            pkg = artifact.get("name", "unknown")
+            current = artifact.get("version", "unknown")
+            fixes = fix.get("versions", [])
+            if not fixes:
+                continue
+
+            bucket = recommendations.setdefault(pkg, {
+                "current_versions": set(),
+                "target_versions": set(),
+                "severities": set(),
+            })
+            bucket["current_versions"].add(current)
+            bucket["target_versions"].update(fixes)
+            bucket["severities"].add(sev)
+
+        ordered = sorted(
+            recommendations.items(),
+            key=lambda item: (
+                0 if "Critical" in item[1]["severities"] else
+                1 if "High" in item[1]["severities"] else 2,
+                item[0],
+            ),
+        )
+
+        lines = [
+            "# Grype Remediation Suggestions",
+            "",
+            "This issue is generated automatically from the latest weekly Grype scan.",
+            "",
+            "## Local Image Scan Snapshot",
+            "",
+            f"- Critical: {severity_counts.get('Critical', 0)}",
+            f"- High: {severity_counts.get('High', 0)}",
+            f"- Medium: {severity_counts.get('Medium', 0)}",
+            f"- Low: {severity_counts.get('Low', 0)}",
+            "",
+            "## Fixable Recommendations",
+            "",
+        ]
+
+        if not ordered:
+            lines.append("No fixable package updates were reported by Grype for the local image scan.")
+        else:
+            lines.append("| Package | Current | Recommended target(s) | Highest severity |")
+            lines.append("|---|---|---|---|")
+            for pkg, rec in ordered:
+                highest = (
+                    "Critical" if "Critical" in rec["severities"] else
+                    "High" if "High" in rec["severities"] else
+                    "Medium" if "Medium" in rec["severities"] else "Low"
+                )
+                current = ", ".join(sorted(rec["current_versions"]))
+                target = ", ".join(sorted(rec["target_versions"]))
+                lines.append(f"| {pkg} | {current} | {target} | {highest} |")
+
+        lines.extend([
+            "",
+            "## Notes",
+            "",
+            "- Renovate PRs should be reviewed against this recommendation set.",
+            "- The Renovate Grype Guard pipeline enforces no High/Critical regression on merge.",
+        ])
+
+        body = "\n".join(lines) + "\n"
+
+        token = require_env("GITEA_TOKEN")
+        server = require_env("GITEA_SERVER").rstrip("/")
+        repo_owner = "NightHawk-ATL"
+        repo_name = "ntp-dashboard"
+        title = "Grype remediation suggestions"
+
+        headers = {"Authorization": f"token {token}", "Content-Type": "application/json"}
+
+        try:
+          with requests.Session() as session:
+            resp = session.get(
+              f"{server}/api/v1/repos/{repo_owner}/{repo_name}/issues",
+              headers=headers,
+              params={"type": "issues", "state": "open", "limit": 50},
+              timeout=REQUEST_TIMEOUT,
+            )
+            resp.raise_for_status()
+            existing = next((i for i in resp.json() if i.get("title", "").lower() == title.lower()), None)
+
+            if existing:
+              update = session.patch(
+                f"{server}/api/v1/repos/{repo_owner}/{repo_name}/issues/{existing['number']}",
+                headers=headers,
+                json={"body": body},
+                timeout=REQUEST_TIMEOUT,
+              )
+              update.raise_for_status()
+              print(f"Updated issue #{existing['number']}")
+            else:
+              create = session.post(
+                f"{server}/api/v1/repos/{repo_owner}/{repo_name}/issues",
+                headers=headers,
+                json={"title": title, "body": body},
+                timeout=REQUEST_TIMEOUT,
+              )
+              create.raise_for_status()
+              print(f"Created issue #{create.json()['number']}")
+        except RequestException as exc:
+          print(f"Gitea API request failed while managing remediation issue: {exc}", file=sys.stderr)
+          raise SystemExit(1)
+        except (KeyError, ValueError, TypeError) as exc:
+          print(f"Unexpected API response while managing remediation issue: {exc}", file=sys.stderr)
+          raise SystemExit(1)
+        PY
+
+volumes:
+  - name: dockersock
+    host:
+      path: /var/run/docker.sock
+
+---
+# Pipeline 5: Grype regression guard for PRs to pre-update-release
+kind: pipeline
+type: docker
+name: renovate-grype-guard
+
+platform:
+  os: linux
+  arch: arm64
+
+trigger:
+  event:
+    - pull_request
+  branch:
+    - pre-update-release
+
+steps:
+  - name: checkout-base
+    image: alpine/git
+    commands:
+      - git fetch --depth=1 origin $DRONE_TARGET_BRANCH
+      - git worktree add ./base FETCH_HEAD
+
+  - name: build-images
+    image: docker:27-cli
+    volumes:
+      - name: dockersock
+        path: /var/run/docker.sock
+    commands:
+      - docker build --build-arg INSTALL_GPSD_CLIENTS=false -t ntp-dashboard:grype-guard-pr .
+      - docker build --build-arg INSTALL_GPSD_CLIENTS=false -t ntp-dashboard:grype-guard-base ./base
+
+  - name: discover-grype-version
+    image: python:3.13-alpine
+    commands:
+      - |
+        python - <<'PY' > /drone/src/grype-tag.txt
+        import json, urllib.request
+        req = urllib.request.Request(
+            "https://api.github.com/repos/anchore/grype/releases/latest",
+            headers={"Accept": "application/vnd.github+json", "User-Agent": "ntp-dashboard-renovate-grype-guard"},
+        )
+        data = json.load(urllib.request.urlopen(req, timeout=30))
+        print(data["tag_name"])
+        PY
+      - cat /drone/src/grype-tag.txt
+
+  - name: run-grype-scans
+    image: docker:27-cli
+    volumes:
+      - name: dockersock
+        path: /var/run/docker.sock
+    commands:
+      - GRYPE_TAG=$(cat grype-tag.txt)
+      - mkdir -p grype-db-cache security-reports
+      - docker pull anchore/grype:$GRYPE_TAG
+      - >
+        docker run --rm
+        -e GRYPE_DB_CACHE_DIR=/grype-db
+        -e GRYPE_DB_VALIDATE_AGE=false
+        -v $PWD/grype-db-cache:/grype-db
+        anchore/grype:$GRYPE_TAG db update
+      - >
+        docker run --rm
+        -e GRYPE_DB_CACHE_DIR=/grype-db
+        -e GRYPE_DB_VALIDATE_AGE=false
+        -v /var/run/docker.sock:/var/run/docker.sock
+        -v $PWD/grype-db-cache:/grype-db
+        anchore/grype:$GRYPE_TAG
+        ntp-dashboard:grype-guard-base
+        -o json > security-reports/grype-base.json
+      - >
+        docker run --rm
+        -e GRYPE_DB_CACHE_DIR=/grype-db
+        -e GRYPE_DB_VALIDATE_AGE=false
+        -v /var/run/docker.sock:/var/run/docker.sock
+        -v $PWD/grype-db-cache:/grype-db
+        anchore/grype:$GRYPE_TAG
+        ntp-dashboard:grype-guard-pr
+        -o json > security-reports/grype-pr.json
+
+  - name: compare-and-gate
+    image: python:3.13-alpine
+    environment:
+      GITEA_TOKEN:
+        from_secret: GITEA_TOKEN
+      GITEA_SERVER:
+        from_secret: GITEA_SERVER
+    commands:
+      - pip install --no-cache-dir requests
+      - |
+        python - <<'PY'
+        import json
+        import os
+        import sys
+        import requests
+        from collections import Counter
+        from pathlib import Path
+        from requests import RequestException
+
+        REQUEST_TIMEOUT = (5, 30)
+
+
+        def require_env(name):
+          value = os.environ.get(name, "").strip()
+          if not value:
+            raise RuntimeError(f"Missing required environment variable: {name}")
+          return value
+
+
+        def load_required_json(path):
+          if not path.exists() or path.stat().st_size == 0:
+            raise RuntimeError(f"Required scan file missing or empty: {path}")
+          try:
+            return json.loads(path.read_text(encoding="utf-8"))
+          except json.JSONDecodeError as exc:
+            raise RuntimeError(f"Failed to parse JSON from {path}: {exc}") from exc
+
+        try:
+          base = load_required_json(Path("security-reports/grype-base.json"))
+          pr = load_required_json(Path("security-reports/grype-pr.json"))
+        except RuntimeError as exc:
+          print(str(exc), file=sys.stderr)
+          raise SystemExit(1)
+
+        levels = ["Critical", "High", "Medium", "Low", "Negligible", "Unknown"]
+
+        def counts(doc):
+            c = Counter()
+            for m in doc.get("matches", []):
+                sev = m.get("vulnerability", {}).get("severity", "Unknown").title()
+                c[sev] += 1
+            return c
+
+        def fixed_recommendations(doc):
+            recs = {}
+            for m in doc.get("matches", []):
+                vuln = m.get("vulnerability", {})
+                fix = vuln.get("fix", {}) or {}
+                if fix.get("state") != "fixed":
+                    continue
+                artifact = m.get("artifact", {})
+                pkg = artifact.get("name", "unknown")
+                versions = tuple(fix.get("versions", []))
+                if not versions:
+                    continue
+                bucket = recs.setdefault(pkg, set())
+                for v in versions:
+                    bucket.add(v)
+            return {k: sorted(v) for k, v in sorted(recs.items())}
+
+        def fixed_high_critical_recommendations(doc):
+            high_critical = {"High", "Critical"}
+            recs = {}
+            for m in doc.get("matches", []):
+                vuln = m.get("vulnerability", {})
+                sev = vuln.get("severity", "Unknown").title()
+                if sev not in high_critical:
+                    continue
+                fix = vuln.get("fix", {}) or {}
+                if fix.get("state") != "fixed":
+                    continue
+                artifact = m.get("artifact", {})
+                pkg = artifact.get("name", "unknown")
+                versions = tuple(fix.get("versions", []))
+                if not versions:
+                    continue
+                bucket = recs.setdefault(pkg, set())
+                for v in versions:
+                    bucket.add(v)
+            return {k: sorted(v) for k, v in sorted(recs.items())}
+
+        def vulnerable_pkg_versions(doc):
+            pkgs = {}
+            for m in doc.get("matches", []):
+                vuln = m.get("vulnerability", {})
+                sev = vuln.get("severity", "Unknown").title()
+                artifact = m.get("artifact", {})
+                pkg = artifact.get("name", "unknown")
+                version = artifact.get("version", "unknown")
+                bucket = pkgs.setdefault(pkg, {"versions": set(), "severities": set()})
+                bucket["versions"].add(version)
+                bucket["severities"].add(sev)
+            return pkgs
+
+        base_counts = counts(base)
+        pr_counts = counts(pr)
+        base_pkgs = vulnerable_pkg_versions(base)
+        pr_pkgs = vulnerable_pkg_versions(pr)
+        recs = fixed_recommendations(pr)
+        high_critical_recs = fixed_high_critical_recommendations(pr)
+
+        summary_lines = [
+            "## Grype Guard",
+            "",
+            "| Severity | Base | PR | Delta |",
+            "|---|---:|---:|---:|",
+        ]
+        for lvl in levels:
+            b = base_counts.get(lvl, 0)
+            p = pr_counts.get(lvl, 0)
+            summary_lines.append(f"| {lvl} | {b} | {p} | {p - b:+d} |")
+
+        if recs:
+            summary_lines.extend(["", "### Fixable package recommendations from PR image"])
+            for pkg, versions in recs.items():
+                summary_lines.append(f"- {pkg}: {', '.join(versions)}")
+
+        changed_vulnerable_pkgs = []
+        for pkg in sorted(set(base_pkgs) | set(pr_pkgs)):
+            before = sorted(base_pkgs.get(pkg, {}).get("versions", set()))
+            after = sorted(pr_pkgs.get(pkg, {}).get("versions", set()))
+            if before != after:
+                changed_vulnerable_pkgs.append(pkg)
+
+        underfixed_updates = [pkg for pkg in changed_vulnerable_pkgs if pkg in high_critical_recs]
+
+        if changed_vulnerable_pkgs:
+            summary_lines.extend(["", "### Vulnerable packages changed by this PR"])
+            for pkg in changed_vulnerable_pkgs:
+                before = ", ".join(sorted(base_pkgs.get(pkg, {}).get("versions", set()))) or "none"
+                after = ", ".join(sorted(pr_pkgs.get(pkg, {}).get("versions", set()))) or "none"
+                summary_lines.append(f"- {pkg}: {before} -> {after}")
+
+        critical_regression = pr_counts.get("Critical", 0) > base_counts.get("Critical", 0)
+        high_regression = pr_counts.get("High", 0) > base_counts.get("High", 0)
+
+        if underfixed_updates:
+            fail_msg = f"Underfixed updates for High/Critical packages: {', '.join(sorted(underfixed_updates))}"
+            summary_lines.extend(["", f"**FAIL**: {fail_msg}"])
+        elif critical_regression or high_regression:
+            fail_msg = "High/Critical vulnerability regression introduced by this PR"
+            summary_lines.extend(["", f"**FAIL**: {fail_msg}"])
+        else:
+            fail_msg = None
+            summary_lines.extend(["", "**PASS**: No High/Critical regression introduced."])
+
+        comment_body = "\n".join(summary_lines) + "\n"
+        print(comment_body)
+
+        token = require_env("GITEA_TOKEN")
+        server = require_env("GITEA_SERVER").rstrip("/")
+        pr_number = require_env("DRONE_PULL_REQUEST")
+        headers = {"Authorization": f"token {token}", "Content-Type": "application/json"}
+
+        try:
+          resp = requests.post(
+            f"{server}/api/v1/repos/NightHawk-ATL/ntp-dashboard/issues/{pr_number}/comments",
+            headers=headers,
+            json={"body": comment_body},
+            timeout=REQUEST_TIMEOUT,
+          )
+          resp.raise_for_status()
+          print(f"Posted Grype Guard comment to PR #{pr_number}")
+        except RequestException as exc:
+          print(f"Warning: failed to post Grype Guard comment to PR #{pr_number}: {exc}", file=sys.stderr)
+
+        if fail_msg:
+            raise SystemExit(f"Grype Guard FAILED: {fail_msg}")
+        PY
+
 volumes:
   - name: dockersock
     host:
