@@ -107,13 +107,7 @@ steps:
       RENOVATE_TOKEN:
         from_secret: GITEA_TOKEN
       LOG_LEVEL: info
-      RUN_RENOVATE: ${RUN_RENOVATE}
     commands:
-      - |
-        if [ "${RUN_RENOVATE}" != "true" ]; then
-          echo "Skipping renovate-bot. Set RUN_RENOVATE=true to execute this pipeline."
-          exit 0
-        fi
       - renovate
 
 ---
