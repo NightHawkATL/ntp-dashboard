@@ -1,0 +1,19 @@
+services:
+  gitea-ollama-mention-bot:
+    build:
+      context: ./ci/mention-bot
+    container_name: gitea-ollama-mention-bot
+    restart: unless-stopped
+    environment:
+      BOT_HOST: 0.0.0.0
+      BOT_PORT: 8095
+      BOT_USERNAME: ollama-review-bot
+      BOT_MENTION: "@ollama-review-bot"
+      GITEA_SERVER: http://10.0.2.19:8124
+      OLLAMA_URL: http://10.0.2.19:11434
+      OLLAMA_MODEL: qwen2.5-coder:14b
+      # Set these in your runtime environment or secrets manager.
+      GITEA_TOKEN: ${GITEA_TOKEN}
+      GITEA_WEBHOOK_SECRET: ${GITEA_WEBHOOK_SECRET}
+    ports:
+      - "8095:8095"
