@@ -107,6 +107,7 @@ steps:
         from_secret: DOCKER_USERNAME
       DOCKER_PASSWORD:
         from_secret: DOCKER_PASSWORD
+      RUN_RETAG: ${RUN_RETAG}
     commands:
       - |
         if [ "${RUN_RETAG}" != "true" ]; then
@@ -145,6 +146,7 @@ steps:
       RENOVATE_TOKEN:
         from_secret: GITEA_TOKEN
       LOG_LEVEL: info
+      RUN_RENOVATE: ${RUN_RENOVATE}
     commands:
       - |
         if [ "${RUN_RENOVATE}" != "true" ]; then
