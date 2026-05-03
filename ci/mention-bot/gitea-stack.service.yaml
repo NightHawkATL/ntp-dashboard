@@ -1,0 +1,33 @@
+services:
+  gitea-ollama-mention-bot:
+    build:
+      # Stable host path for Dockhand/Gitea stack.
+      # Point this to a symlink (e.g. /mnt/Apps/Storage/gitea/mention-bot)
+      # that targets the repo source folder, so updates do not require recopying files.
+      context: /mnt/Apps/Storage/gitea/mention-bot
+    container_name: gitea-ollama-mention-bot
+    restart: unless-stopped
+    environment:
+      BOT_HOST: 0.0.0.0
+      BOT_PORT: 8095
+      BOT_USERNAME: ollama-review-bot
+      BOT_MENTION: "@ollama-review-bot"
+
+      # Internal service URLs on the same Docker network.
+      GITEA_SERVER: http://gitea:3000
+
+      # OpenWebUI (provides web-search-augmented responses via SearxNG)
+      OPENWEBUI_URL: http://10.0.2.17:3000
+      OPENWEBUI_MODEL: qwen2-5-coder:3b
+      # Set OPENWEBUI_API_KEY in your stack .env if your OpenWebUI instance requires auth
+      OPENWEBUI_API_KEY: ${OPENWEBUI_API_KEY:-}
+
+      # SearxNG — top results are injected into the prompt before the model answers
+      SEARXNG_URL: http://10.0.2.20:8080
+
+      # Required secrets (set in your stack .env or compose env section)
+      GITEA_TOKEN: ${GITEA_TOKEN}
+      GITEA_WEBHOOK_SECRET: ${GITEA_WEBHOOK_SECRET}
+
+    ports:
+      - "8095:8095"

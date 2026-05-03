@@ -91,3 +91,7 @@ Please review the Security Policy for guidance on reporting vulnerabilities and 
 
 # Disclaimer
 **This is a current work in progress. It was coded with the help of AI to get the base project running with my ideas.**
+
+## CI Test
+
+This PR is to validate the Ollama PR review pipeline.
