@@ -1,0 +1,24 @@
+services:
+  gitea-ollama-mention-bot:
+    build:
+      # Adjust this path if your stack runs from a different filesystem location.
+      context: /config/workspace/gitea_repo/ntp-dashboard/ci/mention-bot
+    container_name: gitea-ollama-mention-bot
+    restart: unless-stopped
+    environment:
+      BOT_HOST: 0.0.0.0
+      BOT_PORT: 8095
+      BOT_USERNAME: ollama-review-bot
+      BOT_MENTION: "@ollama-review-bot"
+
+      # Internal service URLs on the same Docker network.
+      GITEA_SERVER: http://gitea:3000
+      OLLAMA_URL: http://ollama:11434
+      OLLAMA_MODEL: qwen2.5-coder:14b
+
+      # Required secrets (set in your stack .env or compose env section)
+      GITEA_TOKEN: ${GITEA_TOKEN}
+      GITEA_WEBHOOK_SECRET: ${GITEA_WEBHOOK_SECRET}
+
+    ports:
+      - "8095:8095"
