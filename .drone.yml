@@ -23,6 +23,36 @@ steps:
       - echo "Smoke test passed"
 
 ---
+# Pipeline 1b: Automated PR review with local Ollama
+kind: pipeline
+type: docker
+name: ollama-pr-review
+
+platform:
+  os: linux
+  arch: arm64
+
+trigger:
+  event:
+    - pull_request
+
+steps:
+  - name: run-ollama-review
+    image: python:3.13-alpine
+    failure: ignore
+    environment:
+      GITEA_SERVER:
+        from_secret: GITEA_SERVER
+      GITEA_TOKEN:
+        from_secret: GITEA_TOKEN
+      OLLAMA_URL:
+        from_secret: OLLAMA_URL
+      OLLAMA_MODEL:
+        from_secret: OLLAMA_MODEL
+    commands:
+      - python ci/ollama_pr_review.py
+
+---
 # Pipeline 2: Build and publish multi-arch Docker image on release tag
 kind: pipeline
 type: docker
