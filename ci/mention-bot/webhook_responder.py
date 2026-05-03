@@ -7,6 +7,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import traceback
 import urllib.error
 import urllib.request
@@ -87,6 +88,13 @@ def _extract_pr_context(payload: dict) -> tuple[dict, dict, dict, str]:
     return repo, pr, comment, sender
 
 
+def _strip_bot_mention(text: str) -> str:
+    pattern = re.compile(rf"\[?{re.escape(BOT_MENTION)}\]?\([^)]*\)?", re.IGNORECASE)
+    cleaned = pattern.sub("", text)
+    cleaned = cleaned.replace(BOT_MENTION, "")
+    return cleaned.strip()
+
+
 def _should_handle(event: str, payload: dict) -> tuple[bool, str]:
     allowed_events = {
         "issue_comment",
@@ -148,8 +156,8 @@ def _build_prompt(payload: dict) -> str:
     repo, pr, comment, sender = _extract_pr_context(payload)
 
     comment_body = comment.get("body") or ""
-    # Isolate the question by stripping the bot mention token for the search query.
-    question = comment_body.lower().replace(BOT_MENTION, "").strip()
+    sanitized_comment = _strip_bot_mention(comment_body)
+    question = sanitized_comment.lower()
 
     search_context = _search_web(question) if question and SEARXNG_URL else ""
 
@@ -168,7 +176,7 @@ def _build_prompt(payload: dict) -> str:
         pr.get("body") or "(none)",
         "",
         "Comment that mentioned you:",
-        comment_body,
+        sanitized_comment or comment_body,
     ]
     if search_context:
         parts += ["", search_context]
@@ -210,6 +218,7 @@ def _ask_openwebui(prompt: str) -> str:
         content = (((body.get("choices") or [{}])[0]).get("message") or {}).get("content", "").strip()
         if not content:
             raise RuntimeError("OpenWebUI returned empty content")
+        content = _strip_bot_mention(content)
         if len(content) > MAX_REPLY_CHARS:
             content = content[:MAX_REPLY_CHARS] + "\n\n[truncated]"
         return content
