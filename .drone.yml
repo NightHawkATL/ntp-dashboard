@@ -107,7 +107,7 @@ steps:
       RENOVATE_REPOSITORIES: NightHawk-ATL/ntp-dashboard
       RENOVATE_TOKEN:
         from_secret: GITEA_TOKEN
-      LOG_LEVEL: debug
+      LOG_LEVEL: info
     commands:
       - renovate
 
