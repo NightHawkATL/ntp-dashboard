@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Gitea webhook responder that uses Ollama to reply when the bot is mentioned."""
+"""Gitea webhook responder that uses OpenWebUI to reply when the bot is mentioned."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ GITEA_WEBHOOK_SECRET = os.getenv("GITEA_WEBHOOK_SECRET", "")
 
 OPENWEBUI_URL = os.getenv("OPENWEBUI_URL", "").rstrip("/")
 OPENWEBUI_API_KEY = os.getenv("OPENWEBUI_API_KEY", "")
-OPENWEBUI_MODEL = os.getenv("OPENWEBUI_MODEL", "qwen2.5-coder:14b")
+OPENWEBUI_MODEL = os.getenv("OPENWEBUI_MODEL", "qwen2-5-coder:3b")
 SEARXNG_URL = os.getenv("SEARXNG_URL", "").rstrip("/")
 
 BOT_USERNAME = os.getenv("BOT_USERNAME", "ollama-review-bot").strip()
