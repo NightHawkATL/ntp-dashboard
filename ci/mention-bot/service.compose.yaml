@@ -10,8 +10,10 @@ services:
       BOT_USERNAME: ollama-review-bot
       BOT_MENTION: "@ollama-review-bot"
       GITEA_SERVER: http://10.0.2.19:8124
-      OLLAMA_URL: http://10.0.2.19:11434
-      OLLAMA_MODEL: qwen2.5-coder:14b
+      OPENWEBUI_URL: http://10.0.2.17:3000
+      OPENWEBUI_MODEL: qwen2-5-coder:3b
+      OPENWEBUI_API_KEY: ${OPENWEBUI_API_KEY:-}
+      SEARXNG_URL: http://10.0.2.20:8080
       # Set these in your runtime environment or secrets manager.
       GITEA_TOKEN: ${GITEA_TOKEN}
       GITEA_WEBHOOK_SECRET: ${GITEA_WEBHOOK_SECRET}
