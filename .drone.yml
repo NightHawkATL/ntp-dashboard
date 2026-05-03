@@ -114,6 +114,38 @@ steps:
       - docker buildx imagetools inspect "$DOCKER_USERNAME/ntp-dashboard:latest"
 
 ---
+# Pipeline 5: Renovate bot (weekly cron + manual trigger)
+kind: pipeline
+type: docker
+name: renovate-bot
+
+platform:
+  os: linux
+  arch: arm64
+
+trigger:
+  event:
+    - cron
+    - custom
+  cron:
+    - weekly-renovate
+  branch:
+    - main
+
+steps:
+  - name: run-renovate
+    image: renovate/renovate:39
+    environment:
+      RENOVATE_PLATFORM: gitea
+      RENOVATE_ENDPOINT: http://gitea:3000/api/v1
+      RENOVATE_REPOSITORIES: NightHawk-ATL/ntp-dashboard
+      RENOVATE_TOKEN:
+        from_secret: GITEA_TOKEN
+      LOG_LEVEL: info
+    commands:
+      - renovate
+
+---
 # Pipeline 3: Weekly Grype security scan (Wednesday 12:00 UTC) + manual trigger
 kind: pipeline
 type: docker
