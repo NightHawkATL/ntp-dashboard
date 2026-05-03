@@ -48,6 +48,28 @@ def request_json(
         raise RuntimeError(f"Request failed for {url}: {exc}") from exc
 
 
+def request_text(method: str, url: str, *, token: str | None = None) -> str:
+    headers = {"Accept": "text/plain"}
+    if token:
+        headers["Authorization"] = f"token {token}"
+    req = urllib.request.Request(url, headers=headers, method=method)
+    try:
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            return resp.read().decode("utf-8", errors="replace")
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"HTTP {exc.code} for {url}: {body}") from exc
+    except urllib.error.URLError as exc:
+        raise RuntimeError(f"Request failed for {url}: {exc}") from exc
+
+
+def get_pr_diff(api_base: str, owner: str, repo: str, pr_number: str, token: str) -> str:
+    # Gitea exposes unified diff for PRs via .diff endpoint.
+    diff_url = f"{api_base}/repos/{owner}/{repo}/pulls/{pr_number}.diff"
+    diff_text = request_text("GET", diff_url, token=token)
+    return diff_text.strip()
+
+
 def get_pr_files(api_base: str, owner: str, repo: str, pr_number: str, token: str) -> list[dict[str, Any]]:
     files: list[dict[str, Any]] = []
     page = 1
@@ -149,7 +171,18 @@ def main() -> int:
             print("No changed files returned by Gitea API; skipping review comment.")
             return 0
 
-        diff_text = build_diff_payload(files)
+        diff_text = get_pr_diff(api_base, owner, repo, pr_number, gitea_token)
+        if not diff_text:
+            # Fallback for instances where diff endpoint is unavailable.
+            diff_text = build_diff_payload(files)
+
+        if not diff_text.strip():
+            print("No diff content available; skipping review comment.")
+            return 0
+
+        if len(diff_text) > 24000:
+            diff_text = diff_text[:24000] + "\n[truncated]\n"
+
         review = ask_ollama(ollama_url, ollama_model, f"{owner}/{repo}", pr_number, diff_text)
 
         comment = (
