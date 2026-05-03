@@ -113,8 +113,14 @@ def build_diff_payload(files: list[dict[str, Any]], max_chars: int = 24000) -> s
 def ask_ollama(ollama_url: str, model: str, repo: str, pr_number: str, diff_text: str) -> str:
     endpoint = ollama_url.rstrip("/") + "/api/chat"
     system_prompt = (
-        "You are a senior code reviewer. Focus on correctness, security, performance regressions, "
-        "and missing tests. Do not suggest style-only changes."
+        "You are a senior code reviewer. Analyze only the diff provided. "
+        "Report only findings that are directly observable in the changed lines — do not infer, "
+        "assume, or hallucinate behavior about code not present in the diff. "
+        "If a concern depends on context outside the diff, note it as 'unverifiable without full context'. "
+        "Do not report issues that are already handled in the diff. "
+        "Focus on: correctness bugs, real security flaws (cite the specific line), "
+        "performance regressions, and missing error handling for shown code paths. "
+        "If no high-confidence issues exist, say so explicitly."
     )
     user_prompt = (
         f"Repository: {repo}\n"

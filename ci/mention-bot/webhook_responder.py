@@ -10,6 +10,7 @@ import os
 import traceback
 import urllib.error
 import urllib.request
+import urllib.parse
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 HOST = os.getenv("BOT_HOST", "0.0.0.0")
@@ -19,8 +20,10 @@ GITEA_SERVER = os.getenv("GITEA_SERVER", "").rstrip("/")
 GITEA_TOKEN = os.getenv("GITEA_TOKEN", "")
 GITEA_WEBHOOK_SECRET = os.getenv("GITEA_WEBHOOK_SECRET", "")
 
-OLLAMA_URL = os.getenv("OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5-coder:14b")
+OPENWEBUI_URL = os.getenv("OPENWEBUI_URL", "").rstrip("/")
+OPENWEBUI_API_KEY = os.getenv("OPENWEBUI_API_KEY", "")
+OPENWEBUI_MODEL = os.getenv("OPENWEBUI_MODEL", "qwen2.5-coder:14b")
+SEARXNG_URL = os.getenv("SEARXNG_URL", "").rstrip("/")
 
 BOT_USERNAME = os.getenv("BOT_USERNAME", "ollama-review-bot").strip()
 BOT_MENTION = os.getenv("BOT_MENTION", f"@{BOT_USERNAME}").strip().lower()
@@ -100,47 +103,110 @@ def _should_handle(event: str, payload: dict) -> tuple[bool, str]:
     return True, "ok"
 
 
+def _search_web(query: str, max_results: int = 3) -> str:
+    """Query SearxNG and return top results as formatted context."""
+    try:
+        params = urllib.parse.urlencode({"q": query, "format": "json", "categories": "general"})
+        url = f"{SEARXNG_URL}/search?{params}"
+        req = urllib.request.Request(url, headers={"User-Agent": "gitea-ollama-mention-bot"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        results = (data.get("results") or [])[:max_results]
+        if not results:
+            return ""
+        lines = ["### Web search context (via SearxNG):"]
+        for i, r in enumerate(results, 1):
+            title = r.get("title", "")
+            content = r.get("content", "")
+            result_url = r.get("url", "")
+            lines.append(f"{i}. Title: {title}")
+            if result_url:
+                lines.append(f"   URL: {result_url}")
+            if content:
+                lines.append(f"   Summary: {content}")
+        return "\n".join(lines)
+    except Exception as exc:  # pylint: disable=broad-except
+        _log(f"[search] warning: {exc}")
+        return ""
+
+
 def _build_prompt(payload: dict) -> str:
     repo = payload["repository"]
     issue = payload["issue"]
     comment = payload["comment"]
     sender = (payload.get("sender") or {}).get("login", "unknown")
 
-    return (
+    comment_body = comment.get("body") or ""
+    # Isolate the question by stripping the bot mention token for the search query.
+    question = comment_body.lower().replace(BOT_MENTION, "").strip()
+
+    search_context = _search_web(question) if question and SEARXNG_URL else ""
+
+    parts = [
         "You are a repository code review assistant for Gitea PR discussions. "
         "Reply directly to the user's question in a concise, actionable way. "
-        "If context is missing, say what is missing and ask one clarifying question.\n\n"
-        f"Repository: {repo.get('full_name', '')}\n"
-        f"PR #{issue.get('number')}: {issue.get('title', '')}\n"
-        f"Author asking: @{sender}\n\n"
-        "PR description:\n"
-        f"{issue.get('body') or '(none)'}\n\n"
-        "Comment that mentioned you:\n"
-        f"{comment.get('body') or ''}\n"
-    )
+        "Only state what you can directly verify from the provided context or search results. "
+        "If you rely on web search results, cite the relevant source URLs you used in a final 'Sources:' section. "
+        "Do not cite URLs you did not use. "
+        "If context is missing, say what is missing and ask one clarifying question.\n",
+        f"Repository: {repo.get('full_name', '')}",
+        f"PR #{issue.get('number')}: {issue.get('title', '')}",
+        f"Author asking: @{sender}",
+        "",
+        "PR description:",
+        issue.get("body") or "(none)",
+        "",
+        "Comment that mentioned you:",
+        comment_body,
+    ]
+    if search_context:
+        parts += ["", search_context]
+    return "\n".join(parts)
 
 
-def _ask_ollama(prompt: str) -> str:
-    url = f"{OLLAMA_URL}/api/chat"
+def _ask_openwebui(prompt: str) -> str:
+    if not OPENWEBUI_URL:
+        raise RuntimeError("OPENWEBUI_URL is not set")
+    url = f"{OPENWEBUI_URL}/api/chat/completions"
+    headers: dict = {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "User-Agent": "gitea-ollama-mention-bot",
+    }
+    if OPENWEBUI_API_KEY:
+        headers["Authorization"] = f"Bearer {OPENWEBUI_API_KEY}"
     payload = {
-        "model": OLLAMA_MODEL,
+        "model": OPENWEBUI_MODEL,
         "stream": False,
         "messages": [
             {
                 "role": "system",
-                "content": "You are a helpful code review bot in a Gitea pull request discussion.",
+                "content": (
+                    "You are a helpful code review assistant in a Gitea pull request discussion. "
+                    "Answer only what you can verify from the provided context or search results. "
+                    "Do not speculate about code not shown to you. "
+                    "When you use web-search context, end with a 'Sources:' section listing the specific URLs that support your answer."
+                ),
             },
             {"role": "user", "content": prompt},
         ],
-        "options": {"temperature": 0.2},
     }
-    resp = _json_request("POST", url, payload=payload)
-    content = ((resp or {}).get("message") or {}).get("content", "").strip()
-    if not content:
-        raise RuntimeError("Ollama returned empty content")
-    if len(content) > MAX_REPLY_CHARS:
-        content = content[:MAX_REPLY_CHARS] + "\n\n[truncated]"
-    return content
+    data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(url, method="POST", headers=headers, data=data)
+    try:
+        with urllib.request.urlopen(req, timeout=90) as resp:
+            body = json.loads(resp.read().decode("utf-8"))
+        content = (((body.get("choices") or [{}])[0]).get("message") or {}).get("content", "").strip()
+        if not content:
+            raise RuntimeError("OpenWebUI returned empty content")
+        if len(content) > MAX_REPLY_CHARS:
+            content = content[:MAX_REPLY_CHARS] + "\n\n[truncated]"
+        return content
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"HTTP {exc.code} from OpenWebUI: {body}") from exc
+    except urllib.error.URLError as exc:
+        raise RuntimeError(f"OpenWebUI request failed: {exc}") from exc
 
 
 def _post_reply(payload: dict, reply: str) -> None:
@@ -220,7 +286,7 @@ class Handler(BaseHTTPRequestHandler):
 
         try:
             prompt = _build_prompt(payload)
-            reply = _ask_ollama(prompt)
+            reply = _ask_openwebui(prompt)
             _post_reply(payload, reply)
             _log("Posted mention response")
             self.send_response(200)
@@ -234,7 +300,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def main() -> int:
     _log(f"Starting mention bot on {HOST}:{PORT}")
-    _log(f"Using Ollama model: {OLLAMA_MODEL}")
+    _log(f"Using OpenWebUI model: {OPENWEBUI_MODEL} at {OPENWEBUI_URL}")
     server = HTTPServer((HOST, PORT), Handler)
     server.serve_forever()
     return 0

@@ -13,8 +13,15 @@ services:
 
       # Internal service URLs on the same Docker network.
       GITEA_SERVER: http://gitea:3000
-      OLLAMA_URL: http://ollama:11434
-      OLLAMA_MODEL: qwen2.5-coder:14b
+
+      # OpenWebUI (provides web-search-augmented responses via SearxNG)
+      OPENWEBUI_URL: http://10.0.2.17:3000
+      OPENWEBUI_MODEL: qwen2-5-coder:3b
+      # Set OPENWEBUI_API_KEY in your stack .env if your OpenWebUI instance requires auth
+      OPENWEBUI_API_KEY: ${OPENWEBUI_API_KEY:-}
+
+      # SearxNG — top results are injected into the prompt before the model answers
+      SEARXNG_URL: http://10.0.2.20:8080
 
       # Required secrets (set in your stack .env or compose env section)
       GITEA_TOKEN: ${GITEA_TOKEN}
