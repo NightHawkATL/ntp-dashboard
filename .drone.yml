@@ -347,16 +347,35 @@ steps:
       - pip install --no-cache-dir requests
       - |
         python - <<'PY'
-        import json, os, requests
+        import json
+        import os
+        import sys
+        import requests
         from collections import Counter
         from pathlib import Path
+        from requests import RequestException
+
+        REQUEST_TIMEOUT = (5, 30)
+
+
+        def require_env(name):
+          value = os.environ.get(name, "").strip()
+          if not value:
+            raise RuntimeError(f"Missing required environment variable: {name}")
+          return value
+
+
+        def load_scan(path):
+          if not path.exists() or path.stat().st_size == 0:
+            print(f"{path} not found or empty, skipping remediation issue.")
+            raise SystemExit(0)
+          try:
+            return json.loads(path.read_text(encoding="utf-8"))
+          except json.JSONDecodeError as exc:
+            raise RuntimeError(f"Failed to parse {path}: {exc}") from exc
 
         scan_json = Path("security-reports/grype-image-local.json")
-        if not scan_json.exists() or scan_json.stat().st_size == 0:
-            print("grype-image-local.json not found or empty, skipping remediation issue.")
-            raise SystemExit(0)
-
-        data = json.loads(scan_json.read_text(encoding="utf-8"))
+        data = load_scan(scan_json)
         matches = data.get("matches", [])
 
         severity_counts = Counter()
@@ -438,38 +457,49 @@ steps:
 
         body = "\n".join(lines) + "\n"
 
-        token = os.environ["GITEA_TOKEN"]
-        server = os.environ["GITEA_SERVER"].rstrip("/")
+        token = require_env("GITEA_TOKEN")
+        server = require_env("GITEA_SERVER").rstrip("/")
         repo_owner = "NightHawk-ATL"
         repo_name = "ntp-dashboard"
         title = "Grype remediation suggestions"
 
         headers = {"Authorization": f"token {token}", "Content-Type": "application/json"}
 
-        resp = requests.get(
-            f"{server}/api/v1/repos/{repo_owner}/{repo_name}/issues",
-            headers=headers,
-            params={"type": "issues", "state": "open", "limit": 50},
-        )
-        resp.raise_for_status()
-        existing = next((i for i in resp.json() if i["title"].lower() == title.lower()), None)
+        try:
+          with requests.Session() as session:
+            resp = session.get(
+              f"{server}/api/v1/repos/{repo_owner}/{repo_name}/issues",
+              headers=headers,
+              params={"type": "issues", "state": "open", "limit": 50},
+              timeout=REQUEST_TIMEOUT,
+            )
+            resp.raise_for_status()
+            existing = next((i for i in resp.json() if i.get("title", "").lower() == title.lower()), None)
 
-        if existing:
-            r = requests.patch(
+            if existing:
+              update = session.patch(
                 f"{server}/api/v1/repos/{repo_owner}/{repo_name}/issues/{existing['number']}",
                 headers=headers,
                 json={"body": body},
-            )
-            r.raise_for_status()
-            print(f"Updated issue #{existing['number']}")
-        else:
-            r = requests.post(
+                timeout=REQUEST_TIMEOUT,
+              )
+              update.raise_for_status()
+              print(f"Updated issue #{existing['number']}")
+            else:
+              create = session.post(
                 f"{server}/api/v1/repos/{repo_owner}/{repo_name}/issues",
                 headers=headers,
                 json={"title": title, "body": body},
-            )
-            r.raise_for_status()
-            print(f"Created issue #{r.json()['number']}")
+                timeout=REQUEST_TIMEOUT,
+              )
+              create.raise_for_status()
+              print(f"Created issue #{create.json()['number']}")
+        except RequestException as exc:
+          print(f"Gitea API request failed while managing remediation issue: {exc}", file=sys.stderr)
+          raise SystemExit(1)
+        except (KeyError, ValueError, TypeError) as exc:
+          print(f"Unexpected API response while managing remediation issue: {exc}", file=sys.stderr)
+          raise SystemExit(1)
         PY
 
 volumes:
@@ -569,12 +599,38 @@ steps:
       - pip install --no-cache-dir requests
       - |
         python - <<'PY'
-        import json, os, sys, requests
+        import json
+        import os
+        import sys
+        import requests
         from collections import Counter
         from pathlib import Path
+        from requests import RequestException
 
-        base = json.loads(Path("security-reports/grype-base.json").read_text(encoding="utf-8"))
-        pr = json.loads(Path("security-reports/grype-pr.json").read_text(encoding="utf-8"))
+        REQUEST_TIMEOUT = (5, 30)
+
+
+        def require_env(name):
+          value = os.environ.get(name, "").strip()
+          if not value:
+            raise RuntimeError(f"Missing required environment variable: {name}")
+          return value
+
+
+        def load_required_json(path):
+          if not path.exists() or path.stat().st_size == 0:
+            raise RuntimeError(f"Required scan file missing or empty: {path}")
+          try:
+            return json.loads(path.read_text(encoding="utf-8"))
+          except json.JSONDecodeError as exc:
+            raise RuntimeError(f"Failed to parse JSON from {path}: {exc}") from exc
+
+        try:
+          base = load_required_json(Path("security-reports/grype-base.json"))
+          pr = load_required_json(Path("security-reports/grype-pr.json"))
+        except RuntimeError as exc:
+          print(str(exc), file=sys.stderr)
+          raise SystemExit(1)
 
         levels = ["Critical", "High", "Medium", "Low", "Negligible", "Unknown"]
 
@@ -691,18 +747,22 @@ steps:
         comment_body = "\n".join(summary_lines) + "\n"
         print(comment_body)
 
-        token = os.environ["GITEA_TOKEN"]
-        server = os.environ["GITEA_SERVER"].rstrip("/")
-        pr_number = os.environ["DRONE_PULL_REQUEST"]
+        token = require_env("GITEA_TOKEN")
+        server = require_env("GITEA_SERVER").rstrip("/")
+        pr_number = require_env("DRONE_PULL_REQUEST")
         headers = {"Authorization": f"token {token}", "Content-Type": "application/json"}
 
-        resp = requests.post(
+        try:
+          resp = requests.post(
             f"{server}/api/v1/repos/NightHawk-ATL/ntp-dashboard/issues/{pr_number}/comments",
             headers=headers,
             json={"body": comment_body},
-        )
-        resp.raise_for_status()
-        print(f"Posted Grype Guard comment to PR #{pr_number}")
+            timeout=REQUEST_TIMEOUT,
+          )
+          resp.raise_for_status()
+          print(f"Posted Grype Guard comment to PR #{pr_number}")
+        except RequestException as exc:
+          print(f"Warning: failed to post Grype Guard comment to PR #{pr_number}: {exc}", file=sys.stderr)
 
         if fail_msg:
             raise SystemExit(f"Grype Guard FAILED: {fail_msg}")
