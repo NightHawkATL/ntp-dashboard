@@ -1,8 +1,10 @@
 services:
   gitea-ollama-mention-bot:
     build:
-      # Adjust this path if your stack runs from a different filesystem location.
-      context: /config/workspace/gitea_repo/ntp-dashboard/ci/mention-bot
+      # Stable host path for Dockhand/Gitea stack.
+      # Point this to a symlink (e.g. /mnt/Apps/Storage/gitea/mention-bot)
+      # that targets the repo source folder, so updates do not require recopying files.
+      context: /mnt/Apps/Storage/gitea/mention-bot
     container_name: gitea-ollama-mention-bot
     restart: unless-stopped
     environment:
