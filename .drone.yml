@@ -132,8 +132,6 @@ trigger:
   event:
     - cron
     - custom
-  cron:
-    - weekly-renovate
   branch:
     - main
 
