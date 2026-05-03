@@ -102,7 +102,8 @@ steps:
     image: renovate/renovate:39
     environment:
       RENOVATE_PLATFORM: gitea
-      RENOVATE_ENDPOINT: http://gitea:3000/api/v1
+      RENOVATE_ENDPOINT:
+        from_secret: GITEA_SERVER
       RENOVATE_REPOSITORIES: NightHawk-ATL/ntp-dashboard
       RENOVATE_TOKEN:
         from_secret: GITEA_TOKEN
