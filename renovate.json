@@ -1,0 +1,44 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "dependencyDashboard": true,
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 2,
+  "rebaseWhen": "conflicted",
+  "baseBranches": [
+    "pre-update-release"
+  ],
+  "branchPrefix": "renovate/",
+  "labels": [
+    "dependencies"
+  ],
+  "assignees": [
+    "NightHawk-ATL"
+  ],
+  "timezone": "Etc/UTC",
+  "schedule": [
+    "before 6am on monday"
+  ],
+  "automerge": false,
+  "enabledManagers": [
+    "pip_requirements",
+    "dockerfile",
+    "docker-compose"
+  ],
+  "packageRules": [
+    {
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "labels": [
+        "dependencies",
+        "major-update"
+      ]
+    },
+    {
+      "matchManagers": [
+        "pip_requirements"
+      ],
+      "groupName": "python-dependencies"
+    }
+  ]
+}
