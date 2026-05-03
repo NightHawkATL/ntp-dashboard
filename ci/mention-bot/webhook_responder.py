@@ -79,25 +79,39 @@ def _verify_signature(raw: bytes, signature_header: str) -> bool:
     return hmac.compare_digest(sent, digest)
 
 
+def _extract_pr_context(payload: dict) -> tuple[dict, dict, dict, str]:
+    repo = payload.get("repository") or {}
+    pr = payload.get("issue") or payload.get("pull_request") or {}
+    comment = payload.get("comment") or payload.get("review") or {}
+    sender = ((payload.get("sender") or {}).get("login") or "unknown").strip()
+    return repo, pr, comment, sender
+
+
 def _should_handle(event: str, payload: dict) -> tuple[bool, str]:
-    if event != "issue_comment":
+    allowed_events = {
+        "issue_comment",
+        "pull_request_review",
+        "pull_request_review_comment",
+    }
+    if event not in allowed_events:
         return False, f"Ignoring event {event}"
 
     action = (payload.get("action") or "").lower()
-    if action not in {"created", "edited"}:
+    if action not in {"created", "edited", "submitted"}:
         return False, f"Ignoring action {action}"
 
-    issue = payload.get("issue") or {}
-    if not issue.get("pull_request"):
+    _, pr, comment, sender = _extract_pr_context(payload)
+    if not pr:
+        return False, "Ignoring event without PR context"
+
+    if event == "issue_comment" and not pr.get("pull_request"):
         return False, "Ignoring non-PR issue comment"
 
-    comment = payload.get("comment") or {}
     body = (comment.get("body") or "")
     if BOT_MENTION not in body.lower():
         return False, "No bot mention found"
 
-    sender = ((payload.get("sender") or {}).get("login") or "").strip().lower()
-    if sender == BOT_USERNAME.lower():
+    if sender.lower() == BOT_USERNAME.lower():
         return False, "Ignoring bot's own comment"
 
     return True, "ok"
@@ -131,10 +145,7 @@ def _search_web(query: str, max_results: int = 3) -> str:
 
 
 def _build_prompt(payload: dict) -> str:
-    repo = payload["repository"]
-    issue = payload["issue"]
-    comment = payload["comment"]
-    sender = (payload.get("sender") or {}).get("login", "unknown")
+    repo, pr, comment, sender = _extract_pr_context(payload)
 
     comment_body = comment.get("body") or ""
     # Isolate the question by stripping the bot mention token for the search query.
@@ -150,11 +161,11 @@ def _build_prompt(payload: dict) -> str:
         "Do not cite URLs you did not use. "
         "If context is missing, say what is missing and ask one clarifying question.\n",
         f"Repository: {repo.get('full_name', '')}",
-        f"PR #{issue.get('number')}: {issue.get('title', '')}",
+        f"PR #{pr.get('number')}: {pr.get('title', '')}",
         f"Author asking: @{sender}",
         "",
         "PR description:",
-        issue.get("body") or "(none)",
+        pr.get("body") or "(none)",
         "",
         "Comment that mentioned you:",
         comment_body,
@@ -210,13 +221,11 @@ def _ask_openwebui(prompt: str) -> str:
 
 
 def _post_reply(payload: dict, reply: str) -> None:
-    repo = payload["repository"]
-    issue = payload["issue"]
-    sender = (payload.get("sender") or {}).get("login", "unknown")
+    repo, pr, _, sender = _extract_pr_context(payload)
 
     owner = (repo.get("owner") or {}).get("login")
     name = repo.get("name")
-    number = issue.get("number")
+    number = pr.get("number")
 
     if not owner or not name or not number:
         raise RuntimeError("Missing repository/issue fields in webhook payload")
