@@ -103,7 +103,7 @@ steps:
     environment:
       RENOVATE_PLATFORM: gitea
       RENOVATE_ENDPOINT:
-        from_secret: GITEA_SERVER
+        from_secret: GITEA_API_URL
       RENOVATE_REPOSITORIES: NightHawk-ATL/ntp-dashboard
       RENOVATE_TOKEN:
         from_secret: GITEA_TOKEN
