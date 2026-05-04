@@ -497,27 +497,31 @@ function applyColorPalette(colorId) {
 // Initialize on page load
 applyColorPalette(localStorage.themeColor || 'blue');
 
-// --- GitHub Update Checker ---
+// --- Docker Hub Update Checker (via backend) ---
 async function checkForUpdates() {
     try {
-        // Grab the running version that Python injected into the HTML
-        const currentVersion = document.getElementById('versionDisplay').innerText.trim();
-        
-        // Ask GitHub what the newest released tag is
-        const res = await fetch('https://api.github.com/repos/NightHawkATL/ntp-dashboard/releases/latest');
+        const badge = document.getElementById('updateBadge');
+        const versionDisplay = document.getElementById('versionDisplay');
+        const res = await fetch('/api/update');
         if (res.ok) {
             const data = await res.json();
-            const latestVersion = data.tag_name;
-            
-            // If GitHub's newest version doesn't match the running version, show the badge!
-            if (latestVersion && latestVersion !== currentVersion) {
-                const badge = document.getElementById('updateBadge');
-                badge.innerText = `Update Available: ${latestVersion}`;
+            if (data.update && data.latest) {
+                badge.innerText = `Update Available: ${data.latest}`;
                 badge.classList.remove('hidden');
+                badge.href = `https://hub.docker.com/r/nighthawkatl/ntp-dashboard/tags`;
+            } else {
+                badge.classList.add('hidden');
             }
+            if (data.latest && versionDisplay) {
+                versionDisplay.title = `Latest: ${data.latest}`;
+            }
+        } else {
+            badge.classList.add('hidden');
         }
     } catch (e) {
-        console.log("Could not check for updates (Offline).");
+        // Hide badge if offline or error
+        const badge = document.getElementById('updateBadge');
+        if (badge) badge.classList.add('hidden');
     }
 }
 checkForUpdates(); // Run once when the dashboard loads
