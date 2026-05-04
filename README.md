@@ -29,7 +29,7 @@ You can deploy the app using the following Docker Compose:
 ```yaml
 services:
   ntp-dashboard:
-    image: ghcr.io/nighthawkatl/ntp-dashboard:latest ## -> Change to "nighthawkatl/ntp-dashboard:latest" to pull from Docker Hub.
+    image: nighthawkatl/ntp-dashboard:latest
     container_name: ntp-dashboard ## you can call it whatever you want. This is just a friendly suggestion.
     network_mode: "host" ## Required to allow direct communication with the chrony package on the host.
     environment:
