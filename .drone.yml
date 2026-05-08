@@ -152,6 +152,7 @@ steps:
       - git remote add github "https://x-access-token@github.com/NightHawkATL/ntp-dashboard.git"
       - git push --force github main:main --tags
       - pip install --no-cache-dir requests
+      - export DRONE_TAG=$(git describe --tags --abbrev=0)
       - python ci/sync_github_release.py
 
 ---
