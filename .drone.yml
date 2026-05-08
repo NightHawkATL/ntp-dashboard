@@ -150,8 +150,7 @@ steps:
       - export GIT_TERMINAL_PROMPT=0
       - git remote remove github || true
       - git remote add github "https://x-access-token@github.com/NightHawkATL/ntp-dashboard.git"
-      - git push github main:main
-      - git push --force github --tags
+      - git push --force github main:main --tags
       - pip install --no-cache-dir requests
       - python ci/sync_github_release.py
 
