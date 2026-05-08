@@ -44,9 +44,15 @@ def get_latest_dockerhub_tag():
             data = resp.json()
             results = data.get("results", [])
             if results:
-                tag = results[0]["name"]
-                _update_cache["latest"] = tag
-                _update_cache["error"] = None
+                # Find the first tag that is not 'latest'
+                tag = next((r["name"] for r in results if r["name"] != "latest"), None)
+                if tag:
+                    _update_cache["latest"] = tag
+                    _update_cache["error"] = None
+                else:
+                    tag = None
+                    _update_cache["latest"] = None
+                    _update_cache["error"] = "No versioned tags found"
             else:
                 tag = None
                 _update_cache["latest"] = None

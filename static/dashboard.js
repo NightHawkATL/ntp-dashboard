@@ -506,7 +506,7 @@ async function checkForUpdates() {
         if (res.ok) {
             const data = await res.json();
             if (data.update && data.latest) {
-                badge.innerText = `Update Available: ${data.latest}`;
+                badge.innerText = `Update Available: v${data.latest}`;
                 badge.classList.remove('hidden');
                 badge.href = `https://hub.docker.com/r/nighthawkatl/ntp-dashboard/tags`;
             } else {
