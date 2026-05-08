@@ -126,28 +126,7 @@ trigger:
   branch:
     - main
 
-steps:
-  - name: push-main-to-github
-    image: alpine/git:nonexistent-tag-to-force-error
-    environment:
-      GITHUB_MIRROR_TOKEN:
-        from_secret: GITHUB_MIRROR_TOKEN
-      GITHUB_MIRROR_REPO: NightHawkATL/ntp-dashboard
-    commands:
-      - test -n "$GITHUB_MIRROR_TOKEN"
-      - test -n "$GITHUB_MIRROR_REPO"
-      - git config user.name "drone-mirror-bot"
-      - git config user.email "drone-mirror-bot@localhost"
-      - git fetch origin --tags
-      - printf '#!/bin/sh\necho "$GITHUB_MIRROR_TOKEN"\n' > /tmp/git-askpass
-      - chmod 700 /tmp/git-askpass
-      - export GIT_ASKPASS=/tmp/git-askpass
-      - export GIT_TERMINAL_PROMPT=0
-      - git remote remove github || true
-      - git remote add github "https://x-access-token@github.com/${GITHUB_MIRROR_REPO}.git"
-      - git push github main:main --tags
-
-  - name: sync-github-release
+  - name: sync-github-mirror-and-release
     image: python:3.13-alpine
     environment:
       GITEA_SERVER:
@@ -158,6 +137,21 @@ steps:
         from_secret: GITHUB_MIRROR_TOKEN
       GITHUB_MIRROR_REPO: NightHawkATL/ntp-dashboard
     commands:
+      - apk add --no-cache git
+      - test -n "$GITHUB_MIRROR_TOKEN"
+      - test -n "$GITHUB_MIRROR_REPO"
+      - git config user.name "drone-mirror-bot"
+      - git config user.email "drone-mirror-bot@localhost"
+      - git fetch origin --tags
+      - printf '#!/bin/sh
+echo "$GITHUB_MIRROR_TOKEN"
+' > /tmp/git-askpass
+      - chmod 700 /tmp/git-askpass
+      - export GIT_ASKPASS=/tmp/git-askpass
+      - export GIT_TERMINAL_PROMPT=0
+      - git remote remove github || true
+      - git remote add github "https://x-access-token@github.com/${GITHUB_MIRROR_REPO}.git"
+      - git push github main:main --tags
       - pip install --no-cache-dir requests
       - python ci/sync_github_release.py
 
