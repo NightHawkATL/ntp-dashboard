@@ -125,13 +125,9 @@ platform:
 
 trigger:
   event:
-    include:
-      - tag
-  ref:
-    include:
-      - refs/tags/v*
-    exclude:
-      - refs/tags/*ci-test*
+    - push
+  branch:
+    - main
 
 steps:
   - name: push-main-to-github
