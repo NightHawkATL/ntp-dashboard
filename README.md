@@ -1,5 +1,7 @@
 <img width="1280" height="640" alt="ntp-dashboard-title" src="https://github.com/user-attachments/assets/fd519072-43d6-4c5e-bb9e-cda729db4bd3" />
 
+> **Note:** This GitHub repository is a mirror of the primary self-hosted Gitea instance. All development, CI/CD, and issue tracking occurs on the Gitea instance. The GitHub mirror is provided for visibility and Docker Hub release publishing only. Issues opened here will be reviewed but response times may be slower than on the primary instance.
+
 When I first built my NTP-PPS server, I followed this blog on how to do it: https://blog.networkprofile.org/gps-backed-local-ntp-server/. Once I was done, I wanted to be able to check on it occasionally to make sure everything was still working as expected. I just wanted to be able to monitor it without doing a bunch of extra work with Grafana and whatever else would be needed. That is where I came up with this app, to fill a need that I had for a dashboard for my NTP server. I couldn't find anything that I liked or was anywhere close to what I wanted, so I had to wait for AI to get good enough and for me to want to use it to come up with this solution. I do hope you enjoy it and consider giving it a star.
 
 The initial deployment for this app pulls source data from Chrony on your Docker host and shows the servers it is using. It also displays the current system time and time offset from NTP. This is similar to an "NTP Client" that pulls time based on how the Docker host is set up for time resolution. _If you deploy this locally to your NTP server, it will look similar to the "Remote" host connection, including `PPS`, `NMEA`, satellite data, and connected clients. For a `Local` deployment on a different host than your NTP server, it will look like the image below._
@@ -29,7 +31,7 @@ You can deploy the app using the following Docker Compose:
 ```yaml
 services:
   ntp-dashboard:
-    image: ghcr.io/nighthawkatl/ntp-dashboard:latest ## -> Change to "nighthawkatl/ntp-dashboard:latest" to pull from Docker Hub.
+    image: nighthawkatl/ntp-dashboard:latest
     container_name: ntp-dashboard ## you can call it whatever you want. This is just a friendly suggestion.
     network_mode: "host" ## Required to allow direct communication with the chrony package on the host.
     environment:

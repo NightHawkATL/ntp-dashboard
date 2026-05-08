@@ -1,4 +1,7 @@
 import os, json, subprocess, tempfile, logging
+import threading
+import time
+import requests
 from flask import Flask, render_template, jsonify, request, send_from_directory
 import paramiko
 from cryptography.fernet import Fernet
@@ -22,6 +25,38 @@ app.logger.setLevel(LOG_LEVEL)
 logging.getLogger('werkzeug').setLevel(LOG_LEVEL)
 
 APP_VERSION = os.environ.get("APP_VERSION", "dev")
+
+# --- Docker Hub Update Check (with caching) ---
+_update_cache = {"latest": None, "checked": 0, "error": None}
+_update_cache_lock = threading.Lock()
+DOCKERHUB_REPO = "nighthawkatl/ntp-dashboard"
+DOCKERHUB_TAGS_URL = f"https://hub.docker.com/v2/repositories/{DOCKERHUB_REPO}/tags?page_size=1&page=1&ordering=last_updated"
+_CACHE_TTL = 3600  # seconds (1 hour)
+
+def get_latest_dockerhub_tag():
+    now = time.time()
+    with _update_cache_lock:
+        if _update_cache["latest"] and now - _update_cache["checked"] < _CACHE_TTL:
+            return _update_cache["latest"], _update_cache["error"]
+        try:
+            resp = requests.get(DOCKERHUB_TAGS_URL, timeout=5)
+            resp.raise_for_status()
+            data = resp.json()
+            results = data.get("results", [])
+            if results:
+                tag = results[0]["name"]
+                _update_cache["latest"] = tag
+                _update_cache["error"] = None
+            else:
+                tag = None
+                _update_cache["latest"] = None
+                _update_cache["error"] = "No tags found"
+        except Exception as e:
+            tag = None
+            _update_cache["latest"] = None
+            _update_cache["error"] = str(e)
+        _update_cache["checked"] = now
+        return _update_cache["latest"], _update_cache["error"]
 
 # --- Directory and File Paths ---
 DATA_DIR = '/app/data'
@@ -153,6 +188,20 @@ def set_cache_headers(response):
 @app.route('/')
 def index(): 
     return render_template('index.html', app_version=APP_VERSION)
+
+
+# --- API: Update Check (Docker Hub) ---
+@app.route('/api/update')
+def api_update():
+    latest, error = get_latest_dockerhub_tag()
+    current = APP_VERSION
+    update_available = latest and latest != current
+    return jsonify({
+        "current": current,
+        "latest": latest,
+        "update": update_available,
+        "error": error
+    })
 
 @app.route('/api/ntp')
 def get_ntp():
