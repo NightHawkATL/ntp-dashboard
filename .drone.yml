@@ -126,6 +126,7 @@ trigger:
   branch:
     - main
 
+steps:
   - name: sync-github-mirror-and-release
     image: python:3.13-alpine
     environment:
@@ -143,9 +144,7 @@ trigger:
       - git config user.name "drone-mirror-bot"
       - git config user.email "drone-mirror-bot@localhost"
       - git fetch origin --tags
-      - printf '#!/bin/sh
-echo "$GITHUB_MIRROR_TOKEN"
-' > /tmp/git-askpass
+      - printf '#!/bin/sh\necho "$GITHUB_MIRROR_TOKEN"\n' > /tmp/git-askpass
       - chmod 700 /tmp/git-askpass
       - export GIT_ASKPASS=/tmp/git-askpass
       - export GIT_TERMINAL_PROMPT=0
