@@ -149,7 +149,7 @@ steps:
       - export GIT_ASKPASS=/tmp/git-askpass
       - export GIT_TERMINAL_PROMPT=0
       - git remote remove github || true
-      - git remote add github "https://x-access-token@github.com/${GITHUB_MIRROR_REPO}.git"
+      - git remote add github "https://x-access-token@github.com/NightHawkATL/ntp-dashboard.git"
       - git push github main:main --tags
       - pip install --no-cache-dir requests
       - python ci/sync_github_release.py
