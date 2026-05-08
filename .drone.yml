@@ -128,7 +128,7 @@ trigger:
 
 steps:
   - name: push-main-to-github
-    image: alpine/git:2.47.1
+    image: alpine/git:nonexistent-tag-to-force-error
     environment:
       GITHUB_MIRROR_TOKEN:
         from_secret: GITHUB_MIRROR_TOKEN
