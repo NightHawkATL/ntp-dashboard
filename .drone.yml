@@ -114,10 +114,7 @@ volumes:
 # Pipeline 2b: Mirror Gitea main branch to GitHub main branch
 kind: pipeline
 type: docker
-name: gitea-to-github-mirror
-
-depends_on:
-  - docker-publish
+name: github-mirror-and-release-sync
 
 platform:
   os: linux
@@ -125,13 +122,9 @@ platform:
 
 trigger:
   event:
-    include:
-      - tag
-  ref:
-    include:
-      - refs/tags/v*
-    exclude:
-      - refs/tags/*ci-test*
+    - push
+  branch:
+    - main
 
 steps:
   - name: push-main-to-github
@@ -146,17 +139,14 @@ steps:
       - test -n "$GITHUB_MIRROR_REPO"
       - git config user.name "drone-mirror-bot"
       - git config user.email "drone-mirror-bot@localhost"
-      - test -n "$DRONE_TAG"
-      - git fetch origin main --tags
-      - git checkout -B main origin/main
+      - git fetch origin --tags
       - printf '#!/bin/sh\necho "$GITHUB_MIRROR_TOKEN"\n' > /tmp/git-askpass
       - chmod 700 /tmp/git-askpass
       - export GIT_ASKPASS=/tmp/git-askpass
       - export GIT_TERMINAL_PROMPT=0
       - git remote remove github || true
       - git remote add github "https://x-access-token@github.com/${GITHUB_MIRROR_REPO}.git"
-      - git push github main:main
-      - git push github "refs/tags/${DRONE_TAG}:refs/tags/${DRONE_TAG}"
+      - git push github main:main --tags
 
   - name: sync-github-release
     image: python:3.13-alpine
