@@ -366,6 +366,7 @@ function renderClientsTable() {
             lastRefreshTime = now;
             fetchNTP();
             fetchGPS();
+            checkForUpdates();
         }
 
         loadUI();
@@ -505,6 +506,28 @@ async function checkForUpdates() {
         const res = await fetch('/api/update');
         if (res.ok) {
             const data = await res.json();
+            
+            // --- Auto-Refresh Logic on Backend Update ---
+            // Check if the backend API reports a newer currently running version than our UI is presenting.
+            const uiVersion = versionDisplay ? versionDisplay.innerText.trim() : '';
+            if (data.current && uiVersion && uiVersion.startsWith('v') && uiVersion !== data.current) {
+                console.log(`Backend upgraded (${data.current}) while UI was showing ${uiVersion}. Forcing reload...`);
+                // Clear any Service Worker caches so we get the fresh CSS/JS on reload
+                if ('caches' in window) {
+                    try {
+                        const keys = await caches.keys();
+                        await Promise.all(keys.map(k => caches.delete(k)));
+                    } catch(err) {} 
+                }
+                // Unregister workers to force a clean slate
+                if ('serviceWorker' in navigator) {
+                    const regs = await navigator.serviceWorker.getRegistrations();
+                    for(let reg of regs) await reg.unregister();
+                }
+                window.location.reload(true);
+                return;
+            }
+
             if (data.update && data.latest) {
                 badge.innerText = `Update Available: v${data.latest}`;
                 badge.classList.remove('hidden');
