@@ -187,7 +187,7 @@ steps:
       - renovate
 
 ---
-# Pipeline 3: Weekly Grype security scan (Wednesday 12:00 UTC) + manual trigger
+# Pipeline 3: Weekly Grype security scan (Saturday) + manual trigger
 kind: pipeline
 type: docker
 name: weekly-grype-scan
@@ -354,6 +354,7 @@ steps:
 
         headers = {"Authorization": f"token {token}", "Content-Type": "application/json"}
         title = "Weekly Grype Security Scan Report"
+        body = "The weekly Grype security scan has completed. The full report is attached as a markdown file for easy copying into release notes."
 
         resp = requests.get(
             f"{server}/api/v1/repos/{repo_owner}/{repo_name}/issues",
@@ -364,21 +365,41 @@ steps:
         existing = next((i for i in resp.json() if i["title"] == title), None)
 
         if existing:
+            issue_number = existing['number']
             r = requests.patch(
-                f"{server}/api/v1/repos/{repo_owner}/{repo_name}/issues/{existing['number']}",
+                f"{server}/api/v1/repos/{repo_owner}/{repo_name}/issues/{issue_number}",
                 headers=headers,
-                json={"body": report},
+                json={"body": body},
             )
             r.raise_for_status()
-            print(f"Updated issue #{existing['number']}")
+            print(f"Updated issue #{issue_number}")
         else:
             r = requests.post(
                 f"{server}/api/v1/repos/{repo_owner}/{repo_name}/issues",
                 headers=headers,
-                json={"title": title, "body": report},
+                json={"title": title, "body": body},
             )
             r.raise_for_status()
-            print(f"Created issue #{r.json()['number']}")
+            issue_number = r.json()['number']
+            print(f"Created issue #{issue_number}")
+
+        # Manage attachments
+        assets_url = f"{server}/api/v1/repos/{repo_owner}/{repo_name}/issues/{issue_number}/assets"
+        auth_header = {"Authorization": f"token {token}"}
+        
+        assets_resp = requests.get(assets_url, headers=auth_header)
+        if assets_resp.status_code == 200:
+            for asset in assets_resp.json():
+                requests.delete(f"{assets_url}/{asset['id']}", headers=auth_header)
+        
+        with open("security-reports/weekly-security-report.md", "rb") as f:
+            up_resp = requests.post(
+                assets_url,
+                headers=auth_header,
+                files={"attachment": ("weekly-security-report.md", f, "text/markdown")}
+            )
+            up_resp.raise_for_status()
+            print("Uploaded report attachment.")
         PY
 
   - name: open-remediation-issue
@@ -465,13 +486,6 @@ steps:
             "# Grype Remediation Suggestions",
             "",
             "This issue is generated automatically from the latest weekly Grype scan.",
-            "",
-            "## Local Image Scan Snapshot",
-            "",
-            f"- Critical: {severity_counts.get('Critical', 0)}",
-            f"- High: {severity_counts.get('High', 0)}",
-            f"- Medium: {severity_counts.get('Medium', 0)}",
-            f"- Low: {severity_counts.get('Low', 0)}",
             "",
             "## Fixable Recommendations",
             "",
