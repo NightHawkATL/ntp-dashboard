@@ -10,7 +10,7 @@ RUN set -eux; \
 	if [ "$INSTALL_GPSD_CLIENTS" = "true" ]; then \
 		apk add --no-cache gpsd-clients; \
 	fi
-RUN apk upgrade --no-cache musl gnutls
+RUN apk upgrade --no-cache musl && apk add --no-cache gnutls=3.8.13-r0
 
 # 2. Download Tailwind CSS locally
 RUN mkdir -p /app/static && wget -q https://cdn.tailwindcss.com/ -O /app/static/tailwindcss.js
