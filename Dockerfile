@@ -10,7 +10,7 @@ RUN set -eux; \
 	if [ "$INSTALL_GPSD_CLIENTS" = "true" ]; then \
 		apk add --no-cache gpsd-clients; \
 	fi
-RUN apk upgrade --no-cache musl
+RUN apk upgrade --no-cache musl && apk add --no-cache gnutls=3.8.13-r0
 
 # 2. Download Tailwind CSS locally
 RUN mkdir -p /app/static && wget -q https://cdn.tailwindcss.com/ -O /app/static/tailwindcss.js
@@ -18,7 +18,7 @@ RUN mkdir -p /app/static && wget -q https://cdn.tailwindcss.com/ -O /app/static/
 # 3. Install Python requirements
 COPY requirements.txt .
 RUN apk add --no-cache build-base libffi-dev openssl-dev python3-dev
-RUN pip install --no-cache-dir --upgrade "pip==26.0.1" \
+RUN pip install --no-cache-dir --upgrade "pip==26.1" \
     && pip install --no-cache-dir -r requirements.txt
 
 # 4. Copy the app files (.dockerignore will block the junk automatically)
