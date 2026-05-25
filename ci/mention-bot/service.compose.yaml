@@ -11,7 +11,7 @@ services:
       BOT_MENTION: "@ollama-review-bot"
       GITEA_SERVER: http://10.0.2.19:8124
       OPENWEBUI_URL: http://10.0.2.17:3000
-      OPENWEBUI_MODEL: qwen2-5-coder:3b
+      OPENWEBUI_MODEL: qwen2-5-coder:7b
       OPENWEBUI_API_KEY: ${OPENWEBUI_API_KEY:-}
       SEARXNG_URL: http://10.0.2.20:8080
       # Set these in your runtime environment or secrets manager.
