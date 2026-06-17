@@ -18,7 +18,7 @@ services:
 
       # OpenWebUI (provides web-search-augmented responses via SearxNG)
       OPENWEBUI_URL: http://10.0.2.17:3000
-      OPENWEBUI_MODEL: qwen2-5-coder:3b
+      OPENWEBUI_MODEL: qwen2-5-coder:7b
       # Set OPENWEBUI_API_KEY in your stack .env if your OpenWebUI instance requires auth
       OPENWEBUI_API_KEY: ${OPENWEBUI_API_KEY:-}
 
