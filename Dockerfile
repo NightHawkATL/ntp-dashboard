@@ -1,4 +1,4 @@
-FROM python:3.14.5-alpine3.22
+FROM python:3.15.0b2-alpine3.22
 
 WORKDIR /app
 
@@ -17,7 +17,7 @@ RUN mkdir -p /app/static && wget -q https://cdn.tailwindcss.com/ -O /app/static/
 
 # 3. Install Python requirements
 COPY requirements.txt .
-RUN apk add --no-cache build-base libffi-dev openssl-dev python3-dev
+RUN apk add --no-cache build-base libffi-dev openssl-dev=3.5.7-r0 libcrypto3=3.5.7-r0 libssl3=3.5.7-r0 python3-dev
 RUN pip install --no-cache-dir --upgrade "pip==26.1" \
     && pip install --no-cache-dir -r requirements.txt
 
