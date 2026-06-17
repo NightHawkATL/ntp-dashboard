@@ -31,7 +31,7 @@ _update_cache = {"latest": None, "checked": 0, "error": None}
 _update_cache_lock = threading.Lock()
 DOCKERHUB_REPO = "nighthawkatl/ntp-dashboard"
 DOCKERHUB_TAGS_URL = f"https://hub.docker.com/v2/repositories/{DOCKERHUB_REPO}/tags?page_size=1&page=1&ordering=last_updated"
-_CACHE_TTL = 3600  # seconds (1 hour)
+_CACHE_TTL = 300  # seconds (5 minutes)
 
 def get_latest_dockerhub_tag():
     now = time.time()
