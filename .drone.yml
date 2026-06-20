@@ -123,8 +123,10 @@ platform:
 trigger:
   event:
     - push
-  branch:
-    - main
+    - tag
+  ref:
+    - refs/heads/main
+    - refs/tags/v*
 
 steps:
   - name: sync-github-mirror-and-release
