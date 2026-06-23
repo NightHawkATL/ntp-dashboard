@@ -202,11 +202,11 @@ def system_metrics():
     if not config.get('enable_monitor', False):
         return jsonify({"error": "Resource monitor disabled"}), 403
 
-    # 1. CPU usage using top
+    # 1. CPU usage using top (supports both standard Ubuntu procps and Alpine busybox)
     # 2. Memory usage using free
     # 3. CPU temp (standard linux thermal zone)
     cmds = [
-        "top -bn1 | grep -i '^cpu' | awk '{print $2}' || echo 'N/A'",
+        "top -bn1 2>/dev/null | awk -F'[, %]+' '/^%?[Cc]pu|CPU/ {for(i=1;i<=NF;i++) {if ($i ~ /^id/) {printf \"%.1f\", 100 - $(i-1); f=1; exit}}} END {if(!f) print \"N/A\"}'",
         "free -m | grep -i '^mem' | awk '{print $3, $2}' || echo 'N/A N/A'",
         "cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo 'N/A'"
     ]
