@@ -162,17 +162,17 @@
         </div> <!-- ^^^ THIS IS THE DIV THAT WAS MISSING! ^^^ -->
 
         <!-- Metric Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6 border border-gray-200 dark:border-gray-700 block lg:col-span-1 min-w-[280px]">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-10 gap-6 mb-6">
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6 border border-gray-200 dark:border-gray-700 block lg:col-span-4 min-w-[280px]">
                 <h2 class="text-lg md:text-base lg:text-md xl:text-lg font-semibold mb-2 text-gray-600 dark:text-gray-300 leading-tight whitespace-nowrap">System Time Offset</h2>
                 <div class="text-xl font-mono font-bold" id="sysOffset">Loading...</div>
             </div>
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6 border border-gray-200 dark:border-gray-700 block lg:col-span-1 min-w-[280px]">
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6 border border-gray-200 dark:border-gray-700 block lg:col-span-3 min-w-[240px]">
                 <h2 class="text-lg md:text-base lg:text-md xl:text-lg font-semibold mb-2 text-gray-600 dark:text-gray-300 leading-tight whitespace-nowrap">Connection Target</h2>
                 <div class="text-lg font-medium text-primary-500" id="connMode">Loading...</div>
             </div>
             <!-- Hardware Resource Monitor Widget (Hidden by default based on config) -->
-            <div id="resourceMonitor" class="hidden bg-white dark:bg-gray-800 rounded-xl shadow p-6 border border-gray-200 dark:border-gray-700 md:col-span-2 lg:col-span-1 min-w-[280px]">
+            <div id="resourceMonitor" class="hidden bg-white dark:bg-gray-800 rounded-xl shadow p-6 border border-gray-200 dark:border-gray-700 md:col-span-2 lg:col-span-3 min-w-[240px]">
                 <h2 class="text-lg md:text-base lg:text-md xl:text-lg font-semibold mb-3 text-gray-600 dark:text-gray-300 flex items-center justify-between leading-tight whitespace-nowrap">
                     Hardware Status
                     <div id="resourceStatus" class="w-3 h-3 rounded-full bg-gray-300 dark:bg-gray-600 animate-pulse"></div>
