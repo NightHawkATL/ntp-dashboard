@@ -88,11 +88,18 @@ async function loadUI() {
         }
 
         const monitorContainer = document.getElementById('resourceMonitor');
+        const offsetCard = document.getElementById('timeOffsetCard');
+        const connCard = document.getElementById('connModeCard');
+        
         if (conf.enable_monitor && monitorContainer) {
             monitorContainer.classList.remove('hidden');
+            if(offsetCard) { offsetCard.classList.remove('lg:col-span-10'); offsetCard.classList.add('lg:col-span-9'); }
+            if(connCard) { connCard.classList.remove('lg:col-span-10'); connCard.classList.add('lg:col-span-5'); }
             fetchMetrics(); // Initial fetch
         } else if (monitorContainer) {
             monitorContainer.classList.add('hidden');
+            if(offsetCard) { offsetCard.classList.remove('lg:col-span-9'); offsetCard.classList.add('lg:col-span-10'); }
+            if(connCard) { connCard.classList.remove('lg:col-span-5'); connCard.classList.add('lg:col-span-10'); }
         }
         
         // Show asterisks if a key is saved, otherwise leave blank
