@@ -102,7 +102,7 @@ def load_config():
             with open(CONFIG_FILE, 'r') as f: return json.load(f)
         except Exception as e:
             log.error('Failed to read config file %s: %s', CONFIG_FILE, e)
-    return {"mode": "local", "host": "", "user": "ubuntu", "password": "", "ssh_key": ""}
+    return {"mode": "local", "host": "", "user": "ubuntu", "password": "", "ssh_key": "", "enable_monitor": False}
 
 def save_config(config):
     with open(CONFIG_FILE, 'w') as f: json.dump(config, f)
@@ -195,6 +195,61 @@ def set_cache_headers(response):
 def index(): 
     return render_template('index.html', app_version=APP_VERSION)
 
+@app.route('/api/system_metrics')
+def system_metrics():
+    """Fetches CPU, RAM, and Temperature data from the configured host."""
+    config = load_config()
+    if not config.get('enable_monitor', False):
+        return jsonify({"error": "Resource monitor disabled"}), 403
+
+    # 1. CPU usage using top
+    # 2. Memory usage using free
+    # 3. CPU temp (standard linux thermal zone)
+    cmds = [
+        "top -bn1 | grep -i '^cpu' | awk '{print $2}' || echo 'N/A'",
+        "free -m | grep -i '^mem' | awk '{print $3, $2}' || echo 'N/A N/A'",
+        "cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo 'N/A'"
+    ]
+
+    try:
+        if config.get('mode') == 'remote':
+            results = run_commands_remote(cmds, config)
+        else:
+            results = run_commands_local(cmds)
+
+        if any(r.startswith("Error") for r in results):
+            return jsonify({"error": "Metrics fetch failed"}), 500
+
+        # Parse CPU
+        cpu_usage = results[0].strip() if results[0].strip() != "N/A" else "0.0"
+        
+        # Parse RAM (Used / Total)
+        ram_parts = results[1].replace('%', '').strip().split()
+        if len(ram_parts) == 2 and ram_parts[0] != "N/A":
+            ram_used = int(ram_parts[0])
+            ram_total = int(ram_parts[1])
+            ram_percent = round((ram_used / ram_total) * 100, 1) if ram_total > 0 else 0
+        else:
+            ram_used, ram_total, ram_percent = (0, 0, 0)
+            
+        # Parse Temp
+        temp_raw = results[2].strip()
+        if temp_raw != "N/A" and temp_raw.isdigit():
+            # milliCelsius to Celsius
+            temp_c = round(int(temp_raw) / 1000, 1)
+        else:
+            temp_c = "N/A"
+
+        return jsonify({
+            "cpu_percent": cpu_usage,
+            "ram_used_mb": ram_used,
+            "ram_total_mb": ram_total,
+            "ram_percent": ram_percent,
+            "temperature_c": temp_c
+        })
+    except Exception as e:
+        log.error("Failed to fetch system metrics: %s", e)
+        return jsonify({"error": str(e)}), 500
 
 # --- API: Update Check (Docker Hub) ---
 @app.route('/api/update')
