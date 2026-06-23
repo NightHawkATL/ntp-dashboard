@@ -145,6 +145,7 @@ steps:
       - test -n "$GITHUB_MIRROR_REPO"
       - git config user.name "drone-mirror-bot"
       - git config user.email "drone-mirror-bot@localhost"
+      - git fetch origin +refs/heads/main:refs/heads/main
       - git fetch origin --tags
       - printf '#!/bin/sh\necho "$GITHUB_MIRROR_TOKEN"\n' > /tmp/git-askpass
       - chmod 700 /tmp/git-askpass
