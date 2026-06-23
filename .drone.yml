@@ -20,7 +20,8 @@ steps:
       - python -V
       - pip install --no-cache-dir -r requirements.txt
       - python -m py_compile app.py
-      - echo "Smoke test passed"
+      - python -m unittest discover -s tests/ -v
+      - echo "Smoke test and Unit tests passed"
 
 ---
 # Pipeline 1b: Automated PR review with local Ollama
