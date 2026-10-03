@@ -273,7 +273,7 @@ def api_update():
 @app.route('/api/ntp')
 def get_ntp():
     config = load_config()
-    cmds =["chronyc tracking", "chronyc sources"]
+    cmds =["chronyc tracking", "chronyc -n sources"]
     
     if config.get("mode") == "local":
         outs = run_commands_local(cmds)
