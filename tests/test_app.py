@@ -134,5 +134,43 @@ class TestNTPDashboardApp(unittest.TestCase):
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0], "Error: bad cmd")
 
+    @patch('app.load_config')
+    @patch('app.run_commands_local')
+    def test_ntp_api_numeric_sources(self, mock_run_cmd, mock_config):
+        """Test that /api/ntp uses chronyc -n sources and parses numeric output properly."""
+        mock_config.return_value = {"mode": "local"}
+        tracking_output = """Reference ID    : 7F7F0101 ()
+Stratum         : 1
+Ref time (UTC)  : Sun Oct 04 12:00:00 2026
+System time     : 0.000000012 seconds slow of NTP time
+Last offset     : -0.000000005 seconds
+RMS offset      : 0.000000020 seconds
+Frequency       : -1.234 ppm
+Residual freq   : +0.001 ppm
+Skew            : 0.025 ppm
+Root delay      : 0.000000000 seconds
+Root dispersion : 0.000010000 seconds
+Update interval : 1.0 seconds
+Leap status     : Normal"""
+        sources_output = """MS Name/IP address         Stratum Poll Reach LastRx Last sample               
+===============================================================================
+#* GPS                           0   4   377    14   -1234ns[ -1234ns] +/-  100ns
+#? PPS                           0   4   377    14      +2ns[    +2ns] +/-  500ps
+^+ 162.159.200.1                 3   6   377    25    +123us[  +123us] +/-   15ms"""
+        mock_run_cmd.return_value = [tracking_output, sources_output]
+
+        response = self.app.get('/api/ntp')
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+
+        # Verify chronyc -n sources was passed
+        mock_run_cmd.assert_called_once_with(["chronyc tracking", "chronyc -n sources"])
+
+        self.assertIn("0.000000012 seconds slow of NTP time", data["offset"])
+        self.assertEqual(len(data["sources"]), 3)
+        self.assertEqual(data["sources"][0]["name"], "GPS")
+        self.assertEqual(data["sources"][1]["name"], "PPS")
+        self.assertEqual(data["sources"][2]["name"], "162.159.200.1")
+
 if __name__ == '__main__':
     unittest.main()
